@@ -1,0 +1,63 @@
+import './style.css'
+import { TankArena } from './tankArena'
+
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+  <main class="game-shell">
+    <canvas id="arena" aria-label="Moo Tanks arena"></canvas>
+
+    <section class="hud hud-primary" aria-label="Player status">
+      <div class="hud-row hud-title">
+        <span id="playerName">Moo</span>
+        <strong id="playerLevel">Level 1</strong>
+      </div>
+      <div class="meter health-meter"><span id="healthFill"></span></div>
+      <div class="meter xp-meter"><span id="xpFill"></span></div>
+      <div class="hud-row">
+        <span>Score</span>
+        <strong id="scoreValue">0</strong>
+      </div>
+      <div class="hud-row">
+        <span>Best</span>
+        <strong id="bestValue">0</strong>
+      </div>
+    </section>
+
+    <section class="hud leaderboard" aria-label="Leaderboard">
+      <h2>Leaderboard</h2>
+      <ol id="leaderboardList"></ol>
+    </section>
+
+    <section class="upgrade-panel" id="upgradePanel" aria-label="Upgrades"></section>
+
+    <section class="menu" id="menu" aria-label="Game menu">
+      <div class="menu-panel">
+        <p class="kicker">Moo Tanks</p>
+        <h1 id="menuTitle">Arena Online</h1>
+        <p id="menuStats" class="menu-stats">0 bots active</p>
+        <div class="menu-actions">
+          <button id="startButton" type="button">Deploy</button>
+          <button id="botButton" type="button" class="secondary">Bot Brawl</button>
+        </div>
+      </div>
+    </section>
+  </main>
+`
+
+const game = new TankArena({
+  canvas: document.querySelector<HTMLCanvasElement>('#arena')!,
+  menu: document.querySelector<HTMLElement>('#menu')!,
+  menuTitle: document.querySelector<HTMLElement>('#menuTitle')!,
+  menuStats: document.querySelector<HTMLElement>('#menuStats')!,
+  startButton: document.querySelector<HTMLButtonElement>('#startButton')!,
+  botButton: document.querySelector<HTMLButtonElement>('#botButton')!,
+  playerName: document.querySelector<HTMLElement>('#playerName')!,
+  playerLevel: document.querySelector<HTMLElement>('#playerLevel')!,
+  healthFill: document.querySelector<HTMLElement>('#healthFill')!,
+  xpFill: document.querySelector<HTMLElement>('#xpFill')!,
+  scoreValue: document.querySelector<HTMLElement>('#scoreValue')!,
+  bestValue: document.querySelector<HTMLElement>('#bestValue')!,
+  leaderboardList: document.querySelector<HTMLOListElement>('#leaderboardList')!,
+  upgradePanel: document.querySelector<HTMLElement>('#upgradePanel')!,
+})
+
+game.start()

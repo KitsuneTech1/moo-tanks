@@ -1,0 +1,351 @@
+:root {
+  color: #17202c;
+  background: #eef3f8;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.35;
+  letter-spacing: 0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+}
+
+.game-shell {
+  position: relative;
+  width: 100vw;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(91, 156, 255, 0.12), transparent 31%),
+    radial-gradient(circle at 82% 70%, rgba(87, 211, 142, 0.12), transparent 28%),
+    #eef3f8;
+}
+
+#arena {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.hud,
+.upgrade-panel,
+.menu-panel {
+  border: 1px solid rgba(69, 82, 99, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 45px rgba(27, 39, 55, 0.14);
+  backdrop-filter: blur(16px);
+}
+
+.hud {
+  position: fixed;
+  z-index: 4;
+  border-radius: 8px;
+  color: #1b2737;
+}
+
+.hud-primary {
+  top: 16px;
+  left: 16px;
+  width: min(300px, calc(100vw - 32px));
+  padding: 14px;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 22px;
+  font-size: 0.88rem;
+}
+
+.hud-row span {
+  color: rgba(27, 39, 55, 0.68);
+}
+
+.hud-title {
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.hud-title span,
+.hud-title strong {
+  color: #17202c;
+}
+
+.meter {
+  width: 100%;
+  height: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(75, 89, 108, 0.18);
+}
+
+.meter span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 120ms linear;
+}
+
+.health-meter span {
+  background: linear-gradient(90deg, #32bf65, #8add57);
+}
+
+.xp-meter span {
+  background: linear-gradient(90deg, #45a3ff, #36d1dc);
+}
+
+.leaderboard {
+  top: 16px;
+  right: 16px;
+  width: min(260px, calc(100vw - 32px));
+  padding: 13px;
+}
+
+.leaderboard h2 {
+  margin: 0 0 9px;
+  font-size: 0.86rem;
+  color: rgba(27, 39, 55, 0.7);
+  text-transform: uppercase;
+}
+
+.leaderboard ol {
+  display: grid;
+  gap: 7px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.leaderboard li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  font-size: 0.86rem;
+}
+
+.leaderboard span {
+  min-width: 0;
+  overflow: hidden;
+  color: #263243;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard strong {
+  color: #111827;
+}
+
+.upgrade-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(170px, 1fr));
+  gap: 8px;
+  width: min(470px, calc(100vw - 32px));
+  padding: 36px 12px 12px;
+  border-radius: 8px;
+}
+
+.upgrade-panel::before {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  color: rgba(27, 39, 55, 0.7);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  content: attr(data-points) " upgrade points";
+}
+
+.upgrade-panel button {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 9px 10px;
+  border: 1px solid rgba(69, 82, 99, 0.16);
+  border-radius: 7px;
+  color: #182232;
+  background: rgba(246, 248, 251, 0.88);
+  text-align: left;
+  cursor: pointer;
+}
+
+.upgrade-panel button:hover:not(:disabled) {
+  border-color: rgba(69, 163, 255, 0.7);
+  background: #ffffff;
+}
+
+.upgrade-panel button:disabled {
+  color: rgba(27, 39, 55, 0.45);
+  cursor: default;
+  opacity: 0.72;
+}
+
+.upgrade-label {
+  overflow: hidden;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upgrade-track {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(75, 89, 108, 0.17);
+}
+
+.upgrade-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffb648, #45a3ff);
+}
+
+.menu {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(238, 243, 248, 0.5);
+  transition:
+    opacity 160ms ease,
+    visibility 160ms ease;
+}
+
+.menu.is-hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.menu-panel {
+  width: min(430px, 100%);
+  padding: 28px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  color: #45a3ff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.menu h1 {
+  margin: 0;
+  color: #121a26;
+  font-size: clamp(2.1rem, 8vw, 4rem);
+  line-height: 0.95;
+}
+
+.menu-stats {
+  margin: 14px 0 22px;
+  color: rgba(27, 39, 55, 0.7);
+  font-weight: 700;
+}
+
+.menu-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.menu-actions button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 7px;
+  color: #ffffff;
+  background: #17202c;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.menu-actions button:hover {
+  background: #2c3c50;
+}
+
+.menu-actions .secondary {
+  color: #17202c;
+  background: #d9e4ef;
+}
+
+.menu-actions .secondary:hover {
+  background: #c7d8e8;
+}
+
+@media (max-width: 760px) {
+  .hud-primary {
+    top: 10px;
+    left: 10px;
+    width: calc(100vw - 20px);
+    padding: 11px;
+  }
+
+  .leaderboard {
+    display: none;
+  }
+
+  .upgrade-panel {
+    right: 10px;
+    bottom: 10px;
+    grid-template-columns: 1fr 1fr;
+    width: calc(100vw - 20px);
+    padding: 32px 9px 9px;
+  }
+
+  .upgrade-panel button {
+    min-height: 48px;
+    padding: 8px;
+  }
+
+  .upgrade-label {
+    font-size: 0.76rem;
+  }
+
+  .menu-panel {
+    padding: 22px;
+  }
+
+  .menu-actions {
+    grid-template-columns: 1fr;
+  }
+}
