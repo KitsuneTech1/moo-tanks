@@ -7,6 +7,9 @@
 - Added player movement, aiming, firing, shape farming, leveling, upgrades, HUD, minimap, leaderboard, and high score persistence.
 - Added 15 working bots with targeting, strafing, shooting, leveling, stat upgrades, and respawns.
 - Added bot-only brawl mode for quick AI checks.
+- Fixed bad WASD movement caused by speed clamping against world position instead of velocity.
+- Added potato-mode performance work: DPR capped to 1, visible-only entity rendering, lighter HUD CSS, throttled HUD DOM updates, and less frequent body collision checks.
+- Added smoke coverage for WASD movement and a raw-frame benchmark that fails below 200 FPS.
 
 ## Near-Term Notes
 

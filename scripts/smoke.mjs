@@ -28,6 +28,16 @@ try {
   if (!menuHiddenAfterDeploy) {
     throw new Error('Deploy did not hide the menu')
   }
+  const beforeMove = await page.evaluate(() => window.__MOO_TANKS_GAME__.getDebugState())
+  await page.keyboard.down('w')
+  await page.waitForTimeout(450)
+  await page.keyboard.up('w')
+  const afterMove = await page.evaluate(() => window.__MOO_TANKS_GAME__.getDebugState())
+  if (afterMove.playerY >= beforeMove.playerY - 12) {
+    throw new Error(
+      `WASD movement failed: Y stayed near ${beforeMove.playerY.toFixed(1)} -> ${afterMove.playerY.toFixed(1)}`,
+    )
+  }
   await page.waitForTimeout(1500)
 
   const state = await page.evaluate(() => {
@@ -86,7 +96,12 @@ try {
     throw new Error(`Browser console errors: ${errors.join(' | ')}`)
   }
 
-  console.log(JSON.stringify(state, null, 2))
+  const perf = await page.evaluate(() => window.__MOO_TANKS_GAME__.benchmark(360))
+  if (perf.fps < 200) {
+    throw new Error(`Raw frame benchmark too slow: ${perf.fps} FPS`)
+  }
+
+  console.log(JSON.stringify({ ...state, beforeMove, afterMove, perf }, null, 2))
 } finally {
   await browser.close()
 }

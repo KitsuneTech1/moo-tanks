@@ -3,7 +3,7 @@ import { TankArena } from './tankArena'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="game-shell">
-    <canvas id="arena" aria-label="Moo Tanks arena"></canvas>
+    <canvas id="arena" aria-label="Moo Tanks arena" tabindex="0"></canvas>
 
     <section class="hud hud-primary" aria-label="Player status">
       <div class="hud-row hud-title">
@@ -60,4 +60,5 @@ const game = new TankArena({
   upgradePanel: document.querySelector<HTMLElement>('#upgradePanel')!,
 })
 
+;(globalThis as unknown as { __MOO_TANKS_GAME__?: TankArena }).__MOO_TANKS_GAME__ = game
 game.start()
