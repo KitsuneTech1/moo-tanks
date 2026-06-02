@@ -109,11 +109,40 @@ type InputState = {
   autoFire: boolean
 }
 
+type DebugState = {
+  playerX: number
+  playerY: number
+  playerVelocity: number
+  bullets: number
+  shapes: number
+  tanks: number
+  score: number
+  level: number
+}
+
+type HudSnapshot = {
+  playerName: string
+  playerLevel: string
+  healthWidth: string
+  xpWidth: string
+  scoreValue: string
+  bestValue: string
+  menuStats: string
+  upgradePoints: string
+  leaderboard: string
+  upgrades: string
+}
+
 const WORLD = {
   width: 4200,
   height: 3000,
   grid: 80,
 }
+
+const TARGET_SHAPES = 82
+const RENDER_SCALE = 1
+const HUD_INTERVAL = 0.1
+const COLLISION_INTERVAL = 1 / 30
 
 const STAT_KEYS: StatKey[] = [
   'maxHealth',
@@ -223,6 +252,10 @@ export class TankArena {
   gameOver = false
   watchBots = false
   bestScore = Number(localStorage.getItem('moo-tanks-best') ?? '0')
+  hudTimer = 0
+  collisionTimer = 0
+  cachedDpr = RENDER_SCALE
+  hudSnapshot: Partial<HudSnapshot> = {}
 
   constructor(hud: HudElements) {
     this.hud = hud
@@ -237,7 +270,7 @@ export class TankArena {
     this.resize()
     this.prepareWorld(false)
     this.showMenu('Arena Online')
-    this.updateHud()
+    this.updateHud(true)
   }
 
   start() {
@@ -249,7 +282,11 @@ export class TankArena {
     window.addEventListener('resize', () => this.resize())
 
     window.addEventListener('keydown', (event) => {
-      const key = event.key.toLowerCase()
+      const key = normalizeKey(event)
+      if (!key) return
+      if (isGameKey(key)) {
+        event.preventDefault()
+      }
       this.input.keys.add(key)
 
       if (key === 'p') {
@@ -275,7 +312,10 @@ export class TankArena {
     })
 
     window.addEventListener('keyup', (event) => {
-      this.input.keys.delete(event.key.toLowerCase())
+      const key = normalizeKey(event)
+      if (key) {
+        this.input.keys.delete(key)
+      }
     })
 
     this.canvas.addEventListener('contextmenu', (event) => event.preventDefault())
@@ -303,7 +343,8 @@ export class TankArena {
 
   resize() {
     const rect = this.canvas.getBoundingClientRect()
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const dpr = RENDER_SCALE
+    this.cachedDpr = dpr
     this.viewWidth = Math.max(320, rect.width)
     this.viewHeight = Math.max(320, rect.height)
     this.canvas.width = Math.floor(this.viewWidth * dpr)
@@ -325,7 +366,8 @@ export class TankArena {
     this.paused = false
     this.gameOver = false
     this.hud.menu.classList.add('is-hidden')
-    this.updateHud()
+    this.canvas.focus({ preventScroll: true })
+    this.updateHud(true)
   }
 
   prepareWorld(watchBots: boolean) {
@@ -359,7 +401,7 @@ export class TankArena {
       this.tanks.push(bot)
     }
 
-    for (let i = 0; i < 95; i += 1) {
+    for (let i = 0; i < TARGET_SHAPES; i += 1) {
       this.spawnShape()
     }
 
@@ -420,7 +462,7 @@ export class TankArena {
   }
 
   update(dt: number, time: number) {
-    while (this.shapes.length < 95) {
+    while (this.shapes.length < TARGET_SHAPES) {
       this.spawnShape()
     }
 
@@ -441,7 +483,7 @@ export class TankArena {
       if (tank.bot) {
         this.updateBot(tank, dt)
       } else {
-        this.updatePlayer(tank)
+        this.updatePlayer(tank, dt)
       }
 
       this.moveTank(tank, dt)
@@ -452,12 +494,20 @@ export class TankArena {
     }
 
     this.updateBullets(dt, time)
-    this.resolveBodyCollisions(dt, time)
+    this.collisionTimer += dt
+    if (this.collisionTimer >= COLLISION_INTERVAL) {
+      this.resolveBodyCollisions(this.collisionTimer, time)
+      this.collisionTimer = 0
+    }
     this.updateCamera(dt)
-    this.updateHud()
+    this.hudTimer += dt
+    if (this.hudTimer >= HUD_INTERVAL) {
+      this.hudTimer = 0
+      this.updateHud(false)
+    }
   }
 
-  updatePlayer(tank: Tank) {
+  updatePlayer(tank: Tank, dt: number) {
     const move = { x: 0, y: 0 }
     if (this.input.keys.has('w') || this.input.keys.has('arrowup')) move.y -= 1
     if (this.input.keys.has('s') || this.input.keys.has('arrowdown')) move.y += 1
@@ -475,8 +525,8 @@ export class TankArena {
 
     const direction = normalize(move)
     const speed = moveSpeed(tank)
-    tank.vx += direction.x * speed * 8 * (1 / 60)
-    tank.vy += direction.y * speed * 8 * (1 / 60)
+    tank.vx += direction.x * speed * 9 * dt
+    tank.vy += direction.y * speed * 9 * dt
     tank.aimAngle = Math.atan2(this.input.pointerWorld.y - tank.y, this.input.pointerWorld.x - tank.x)
     tank.angle = lerpAngle(tank.angle, tank.aimAngle, 0.24)
   }
@@ -499,7 +549,7 @@ export class TankArena {
       brain.fire = false
       brain.wanderAngle += random(-0.4, 0.4) * dt
       const wander = { x: Math.cos(brain.wanderAngle), y: Math.sin(brain.wanderAngle) }
-      this.accelerate(tank, wander, 0.68)
+      this.accelerate(tank, wander, 0.68, dt)
       tank.aimAngle = brain.wanderAngle
       tank.angle = lerpAngle(tank.angle, tank.aimAngle, 0.12)
       return
@@ -526,7 +576,7 @@ export class TankArena {
     if (tank.y < 240) movement.y += 1
     if (tank.y > WORLD.height - 240) movement.y -= 1
 
-    this.accelerate(tank, normalize(movement), 0.82)
+    this.accelerate(tank, normalize(movement), 0.82, dt)
     tank.aimAngle = Math.atan2(toTarget.y, toTarget.x)
     tank.angle = lerpAngle(tank.angle, tank.aimAngle, 0.14)
     brain.fire = distanceToTarget < 900 && Math.abs(angleDelta(tank.angle, tank.aimAngle)) < 0.42
@@ -540,17 +590,17 @@ export class TankArena {
     }
   }
 
-  accelerate(tank: Tank, direction: Point, multiplier: number) {
+  accelerate(tank: Tank, direction: Point, multiplier: number, dt: number) {
     const speed = moveSpeed(tank)
-    tank.vx += direction.x * speed * 7.5 * multiplier * (1 / 60)
-    tank.vy += direction.y * speed * 7.5 * multiplier * (1 / 60)
+    tank.vx += direction.x * speed * 7.5 * multiplier * dt
+    tank.vy += direction.y * speed * 7.5 * multiplier * dt
   }
 
   moveTank(tank: Tank, dt: number) {
     tank.vx *= Math.pow(0.0018, dt)
     tank.vy *= Math.pow(0.0018, dt)
     const maxSpeed = moveSpeed(tank)
-    const velocity = length(tank)
+    const velocity = Math.hypot(tank.vx, tank.vy)
     if (velocity > maxSpeed) {
       tank.vx = (tank.vx / velocity) * maxSpeed
       tank.vy = (tank.vy / velocity) * maxSpeed
@@ -617,7 +667,8 @@ export class TankArena {
   hitShapes(bullet: Bullet, time: number) {
     for (let i = this.shapes.length - 1; i >= 0; i -= 1) {
       const shape = this.shapes[i]
-      if (distance(bullet, shape) > bullet.radius + shape.radius) continue
+      const hitRange = bullet.radius + shape.radius
+      if (distanceSq(bullet, shape) > hitRange * hitRange) continue
 
       shape.health -= bullet.damage
       const owner = this.tanks.find((tank) => tank.id === bullet.ownerId)
@@ -639,7 +690,8 @@ export class TankArena {
   hitTanks(bullet: Bullet, time: number) {
     for (const tank of this.tanks) {
       if (!tank.alive || tank.id === bullet.ownerId) continue
-      if (distance(bullet, tank) > bullet.radius + tank.radius) continue
+      const hitRange = bullet.radius + tank.radius
+      if (distanceSq(bullet, tank) > hitRange * hitRange) continue
 
       tank.health -= bullet.damage
       tank.lastHitAt = time
@@ -668,7 +720,10 @@ export class TankArena {
       if (!tank.alive) continue
 
       for (const shape of this.shapes) {
-        const gap = tank.radius + shape.radius - distance(tank, shape)
+        const range = tank.radius + shape.radius
+        const distSq = distanceSq(tank, shape)
+        if (distSq > range * range) continue
+        const gap = range - Math.sqrt(distSq)
         if (gap <= 0) continue
         const away = normalize({ x: tank.x - shape.x, y: tank.y - shape.y })
         tank.x = clamp(tank.x + away.x * gap * 0.56, tank.radius, WORLD.width - tank.radius)
@@ -696,7 +751,10 @@ export class TankArena {
       for (let b = a + 1; b < this.tanks.length; b += 1) {
         const second = this.tanks[b]
         if (!second.alive) continue
-        const gap = first.radius + second.radius - distance(first, second)
+        const range = first.radius + second.radius
+        const distSq = distanceSq(first, second)
+        if (distSq > range * range) continue
+        const gap = range - Math.sqrt(distSq)
         if (gap <= 0) continue
         const away = normalize({ x: first.x - second.x, y: first.y - second.y })
         first.x += away.x * gap * 0.5
@@ -912,7 +970,7 @@ export class TankArena {
   }
 
   render() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const dpr = this.cachedDpr
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     this.ctx.clearRect(0, 0, this.viewWidth, this.viewHeight)
     this.drawBackground()
@@ -921,13 +979,17 @@ export class TankArena {
     this.ctx.translate(this.viewWidth / 2 - this.camera.x, this.viewHeight / 2 - this.camera.y)
     this.drawWorld()
     for (const shape of this.shapes) {
-      this.drawShape(shape)
+      if (this.isVisible(shape, shape.radius + 34)) {
+        this.drawShape(shape)
+      }
     }
     for (const bullet of this.bullets) {
-      this.drawBullet(bullet)
+      if (this.isVisible(bullet, bullet.radius + 8)) {
+        this.drawBullet(bullet)
+      }
     }
     for (const tank of this.tanks) {
-      if (tank.alive) {
+      if (tank.alive && this.isVisible(tank, tank.radius + 70)) {
         this.drawTank(tank)
       }
     }
@@ -940,10 +1002,7 @@ export class TankArena {
   }
 
   drawBackground() {
-    const gradient = this.ctx.createLinearGradient(0, 0, this.viewWidth, this.viewHeight)
-    gradient.addColorStop(0, '#f6f8fb')
-    gradient.addColorStop(1, '#eef4ef')
-    this.ctx.fillStyle = gradient
+    this.ctx.fillStyle = '#f2f6fb'
     this.ctx.fillRect(0, 0, this.viewWidth, this.viewHeight)
   }
 
@@ -1093,22 +1152,42 @@ export class TankArena {
     this.ctx.fillRect(0, 0, this.viewWidth, this.viewHeight)
   }
 
-  updateHud() {
+  isVisible(entity: Point, margin: number) {
+    const left = this.camera.x - this.viewWidth / 2 - margin
+    const top = this.camera.y - this.viewHeight / 2 - margin
+    const right = this.camera.x + this.viewWidth / 2 + margin
+    const bottom = this.camera.y + this.viewHeight / 2 + margin
+    return entity.x >= left && entity.x <= right && entity.y >= top && entity.y <= bottom
+  }
+
+  updateHud(force = false) {
     const player = this.player
-    this.hud.playerName.textContent = player.name
-    this.hud.playerLevel.textContent = `Level ${player.level}`
-    this.hud.healthFill.style.width = `${clamp((player.health / player.maxHealth) * 100, 0, 100)}%`
-    this.hud.xpFill.style.width = `${clamp((player.xp / xpForNext(player.level)) * 100, 0, 100)}%`
-    this.hud.scoreValue.textContent = Math.floor(player.score).toLocaleString()
-    this.hud.bestValue.textContent = Math.floor(this.bestScore).toLocaleString()
-    this.hud.menuStats.textContent = `${this.tanks.filter((tank) => tank.alive && tank.bot).length} bots active`
+    const playerName = player.name
+    const playerLevel = `Level ${player.level}`
+    const healthWidth = `${Math.round(clamp((player.health / player.maxHealth) * 100, 0, 100))}%`
+    const xpWidth = `${Math.round(clamp((player.xp / xpForNext(player.level)) * 100, 0, 100))}%`
+    const scoreValue = Math.floor(player.score).toLocaleString()
+    const bestValue = Math.floor(this.bestScore).toLocaleString()
+    const menuStats = `${this.tanks.filter((tank) => tank.alive && tank.bot).length} bots active`
+
+    this.setText(this.hud.playerName, 'playerName', playerName, force)
+    this.setText(this.hud.playerLevel, 'playerLevel', playerLevel, force)
+    this.setStyleWidth(this.hud.healthFill, 'healthWidth', healthWidth, force)
+    this.setStyleWidth(this.hud.xpFill, 'xpWidth', xpWidth, force)
+    this.setText(this.hud.scoreValue, 'scoreValue', scoreValue, force)
+    this.setText(this.hud.bestValue, 'bestValue', bestValue, force)
+    this.setText(this.hud.menuStats, 'menuStats', menuStats, force)
 
     const leaders = [...this.tanks].sort((a, b) => b.score - a.score).slice(0, 7)
-    this.hud.leaderboardList.innerHTML = leaders
+    const leaderboard = leaders
       .map((tank) => `<li><span>${tank.name}</span><strong>${Math.floor(tank.score).toLocaleString()}</strong></li>`)
       .join('')
+    if (force || this.hudSnapshot.leaderboard !== leaderboard) {
+      this.hud.leaderboardList.innerHTML = leaderboard
+      this.hudSnapshot.leaderboard = leaderboard
+    }
 
-    this.hud.upgradePanel.innerHTML = STAT_KEYS.map((key, index) => {
+    const upgrades = STAT_KEYS.map((key, index) => {
       const value = player.stats[key]
       const disabled = player.upgradePoints <= 0 || value >= 7 || !player.alive || this.watchBots
       return `
@@ -1118,12 +1197,72 @@ export class TankArena {
         </button>
       `
     }).join('')
-    this.hud.upgradePanel.dataset.points = `${this.watchBots ? 0 : player.upgradePoints}`
+    if (force || this.hudSnapshot.upgrades !== upgrades) {
+      this.hud.upgradePanel.innerHTML = upgrades
+      this.hudSnapshot.upgrades = upgrades
+    }
+
+    const upgradePoints = `${this.watchBots ? 0 : player.upgradePoints}`
+    if (force || this.hudSnapshot.upgradePoints !== upgradePoints) {
+      this.hud.upgradePanel.dataset.points = upgradePoints
+      this.hudSnapshot.upgradePoints = upgradePoints
+    }
+  }
+
+  setText(element: HTMLElement, key: keyof HudSnapshot, value: string, force: boolean) {
+    if (force || this.hudSnapshot[key] !== value) {
+      element.textContent = value
+      this.hudSnapshot[key] = value
+    }
+  }
+
+  setStyleWidth(element: HTMLElement, key: keyof HudSnapshot, value: string, force: boolean) {
+    if (force || this.hudSnapshot[key] !== value) {
+      element.style.width = value
+      this.hudSnapshot[key] = value
+    }
   }
 
   showMenu(title: string) {
     this.hud.menuTitle.textContent = title
     this.hud.menu.classList.remove('is-hidden')
+  }
+
+  getDebugState(): DebugState {
+    return {
+      playerX: this.player.x,
+      playerY: this.player.y,
+      playerVelocity: Math.hypot(this.player.vx, this.player.vy),
+      bullets: this.bullets.length,
+      shapes: this.shapes.length,
+      tanks: this.tanks.filter((tank) => tank.alive).length,
+      score: this.player.score,
+      level: this.player.level,
+    }
+  }
+
+  benchmark(frames = 300) {
+    const wasPaused = this.paused
+    const wasStarted = this.started
+    this.paused = false
+    this.started = true
+    const start = performance.now()
+    let time = start
+    for (let frame = 0; frame < frames; frame += 1) {
+      time += 1000 / 240
+      this.update(1 / 240, time)
+      this.render()
+    }
+    const elapsedMs = performance.now() - start
+    this.paused = wasPaused
+    this.started = wasStarted
+    this.updateHud(true)
+    return {
+      frames,
+      elapsedMs,
+      fps: Math.round((frames / elapsedMs) * 1000),
+      state: this.getDebugState(),
+    }
   }
 }
 
@@ -1199,6 +1338,12 @@ function distance(a: Point, b: Point) {
   return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
+function distanceSq(a: Point, b: Point) {
+  const dx = a.x - b.x
+  const dy = a.y - b.y
+  return dx * dx + dy * dy
+}
+
 function lerp(from: number, to: number, t: number) {
   return from + (to - from) * t
 }
@@ -1217,4 +1362,45 @@ function lighten(hex: string, amount: number) {
   const g = clamp(((value >> 8) & 255) + 255 * amount, 0, 255)
   const b = clamp((value & 255) + 255 * amount, 0, 255)
   return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+}
+
+function normalizeKey(event: KeyboardEvent) {
+  const codeMap: Record<string, string> = {
+    KeyW: 'w',
+    KeyA: 'a',
+    KeyS: 's',
+    KeyD: 'd',
+    ArrowUp: 'arrowup',
+    ArrowDown: 'arrowdown',
+    ArrowLeft: 'arrowleft',
+    ArrowRight: 'arrowright',
+    KeyE: 'e',
+    KeyP: 'p',
+    KeyR: 'r',
+    Digit1: '1',
+    Digit2: '2',
+    Digit3: '3',
+    Digit4: '4',
+    Digit5: '5',
+    Digit6: '6',
+    Digit7: '7',
+  }
+  return codeMap[event.code] ?? event.key.toLowerCase()
+}
+
+function isGameKey(key: string) {
+  return (
+    key === 'w' ||
+    key === 'a' ||
+    key === 's' ||
+    key === 'd' ||
+    key === 'arrowup' ||
+    key === 'arrowdown' ||
+    key === 'arrowleft' ||
+    key === 'arrowright' ||
+    key === 'e' ||
+    key === 'p' ||
+    key === 'r' ||
+    /^[1-7]$/.test(key)
+  )
 }

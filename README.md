@@ -8,6 +8,7 @@ A browser tank arena prototype inspired by Diep.io, built with Vite, TypeScript,
 - Shape farming with squares, triangles, and pentagons.
 - Working bots that roam, target shapes and tanks, shoot, strafe, level up, upgrade stats, and respawn.
 - Leaderboard, minimap, health/XP bars, high score persistence, pause/restart, and bot-only brawl mode.
+- Default potato-mode rendering with capped canvas pixel ratio and throttled HUD updates.
 
 ## Controls
 
@@ -30,6 +31,12 @@ Build:
 
 ```bash
 npm run build
+```
+
+Smoke test:
+
+```bash
+npm run smoke
 ```
 
 ## Direction
