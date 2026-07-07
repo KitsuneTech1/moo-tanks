@@ -70,6 +70,8 @@ try {
       menuTitle: document.querySelector('#menuTitle')?.textContent ?? '',
       leaderboardItems: document.querySelectorAll('#leaderboardList li').length,
       upgradeButtons: document.querySelectorAll('#upgradePanel button').length,
+      talentButtons: document.querySelectorAll('#talentPanel button').length,
+      modeButtons: document.querySelectorAll('#modeGrid button').length,
       levelText: document.querySelector('#playerLevel')?.textContent ?? '',
     }
   })
@@ -91,6 +93,12 @@ try {
   }
   if (state.upgradeButtons !== 7) {
     throw new Error(`Expected 7 upgrade buttons, found ${state.upgradeButtons}`)
+  }
+  if (state.talentButtons !== 7) {
+    throw new Error(`Expected 7 talent buttons, found ${state.talentButtons}`)
+  }
+  if (state.modeButtons !== 6) {
+    throw new Error(`Expected 6 mode buttons, found ${state.modeButtons}`)
   }
   if (errors.length > 0) {
     throw new Error(`Browser console errors: ${errors.join(' | ')}`)

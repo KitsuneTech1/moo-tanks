@@ -1,93 +1,23 @@
-type Point = {
-  x: number
-  y: number
-}
-
-type StatKey =
-  | 'maxHealth'
-  | 'regen'
-  | 'bodyDamage'
-  | 'bulletSpeed'
-  | 'bulletDamage'
-  | 'reload'
-  | 'moveSpeed'
-
-type ShapeKind = 'square' | 'triangle' | 'pentagon'
-
-type TargetRef =
-  | { type: 'shape'; id: number }
-  | { type: 'tank'; id: number }
-
-type StatBlock = Record<StatKey, number>
-
-type Tank = {
-  id: number
-  name: string
-  bot: boolean
-  color: string
-  accent: string
-  x: number
-  y: number
-  vx: number
-  vy: number
-  radius: number
-  angle: number
-  aimAngle: number
-  health: number
-  maxHealth: number
-  lastHitAt: number
-  level: number
-  xp: number
-  score: number
-  upgradePoints: number
-  stats: StatBlock
-  cooldown: number
-  alive: boolean
-  respawnTimer: number
-  ai?: {
-    target?: TargetRef
-    retargetIn: number
-    strafe: number
-    wanderAngle: number
-    fire: boolean
-  }
-}
-
-type Bullet = {
-  id: number
-  ownerId: number
-  x: number
-  y: number
-  vx: number
-  vy: number
-  radius: number
-  damage: number
-  life: number
-  color: string
-}
-
-type ArenaShape = {
-  id: number
-  kind: ShapeKind
-  x: number
-  y: number
-  radius: number
-  sides: number
-  angle: number
-  spin: number
-  health: number
-  maxHealth: number
-  xp: number
-  score: number
-  color: string
-  stroke: string
-}
+import { LocalTankSimulation } from './simulation/localSimulation'
+import type {
+  BulletState as Bullet,
+  ClientInput,
+  ControlPointState,
+  MatchMode,
+  Point,
+  ShapeState as ArenaShape,
+  StatKey,
+  TankState as Tank,
+} from './simulation/protocol'
+import { MODE_DEFINITIONS, modeDefinition } from './simulation/modes'
+import { TALENTS } from './simulation/talents'
 
 type HudElements = {
   canvas: HTMLCanvasElement
   menu: HTMLElement
   menuTitle: HTMLElement
   menuStats: HTMLElement
+  modeGrid: HTMLElement
   startButton: HTMLButtonElement
   botButton: HTMLButtonElement
   playerName: HTMLElement
@@ -98,6 +28,7 @@ type HudElements = {
   bestValue: HTMLElement
   leaderboardList: HTMLOListElement
   upgradePanel: HTMLElement
+  talentPanel: HTMLElement
 }
 
 type InputState = {
@@ -118,6 +49,8 @@ type DebugState = {
   tanks: number
   score: number
   level: number
+  talentPoints: number
+  talents: number
 }
 
 type HudSnapshot = {
@@ -128,9 +61,12 @@ type HudSnapshot = {
   scoreValue: string
   bestValue: string
   menuStats: string
+  modeButtons: string
   upgradePoints: string
   leaderboard: string
   upgrades: string
+  talentPoints: string
+  talents: string
 }
 
 const WORLD = {
@@ -139,10 +75,8 @@ const WORLD = {
   grid: 80,
 }
 
-const TARGET_SHAPES = 82
 const RENDER_SCALE = 1
 const HUD_INTERVAL = 0.1
-const COLLISION_INTERVAL = 1 / 30
 
 const STAT_KEYS: StatKey[] = [
   'maxHealth',
@@ -164,70 +98,11 @@ const STAT_LABELS: Record<StatKey, string> = {
   moveSpeed: 'Move Speed',
 }
 
-const BOT_NAMES = [
-  'Circuit',
-  'Byte',
-  'Patch',
-  'Servo',
-  'Cache',
-  'Kernel',
-  'Noodle',
-  'Vector',
-  'Juno',
-  'Pixel',
-  'Atlas',
-  'Echo',
-  'Nova',
-  'Rivet',
-  'Sprocket',
-  'Glitch',
-]
-
-const SHAPE_CONFIG: Record<
-  ShapeKind,
-  {
-    sides: number
-    radius: number
-    health: number
-    xp: number
-    score: number
-    color: string
-    stroke: string
-  }
-> = {
-  square: {
-    sides: 4,
-    radius: 24,
-    health: 28,
-    xp: 9,
-    score: 15,
-    color: '#f4c542',
-    stroke: '#c69417',
-  },
-  triangle: {
-    sides: 3,
-    radius: 28,
-    health: 42,
-    xp: 16,
-    score: 28,
-    color: '#ef6461',
-    stroke: '#b63836',
-  },
-  pentagon: {
-    sides: 5,
-    radius: 42,
-    health: 105,
-    xp: 48,
-    score: 90,
-    color: '#5fa8ff',
-    stroke: '#2d70c7',
-  },
-}
-
 export class TankArena {
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
   hud: HudElements
+  simulation: LocalTankSimulation
   input: InputState = {
     keys: new Set(),
     pointer: { x: 0, y: 0 },
@@ -240,6 +115,7 @@ export class TankArena {
   tanks: Tank[] = []
   bullets: Bullet[] = []
   shapes: ArenaShape[] = []
+  controlPoints: ControlPointState[] = []
   player!: Tank
   camera: Point = { x: WORLD.width / 2, y: WORLD.height / 2 }
   viewWidth = 1280
@@ -251,6 +127,7 @@ export class TankArena {
   started = false
   gameOver = false
   watchBots = false
+  selectedMode: MatchMode = 'freeForAll'
   bestScore = Number(localStorage.getItem('moo-tanks-best') ?? '0')
   hudTimer = 0
   collisionTimer = 0
@@ -265,12 +142,22 @@ export class TankArena {
       throw new Error('Canvas 2D context is unavailable')
     }
     this.ctx = ctx
+    this.simulation = new LocalTankSimulation(false)
 
     this.bindEvents()
     this.resize()
-    this.prepareWorld(false)
+    this.prepareWorld('freeForAll')
     this.showMenu('Arena Online')
     this.updateHud(true)
+  }
+
+  syncFromSimulation() {
+    this.tanks = this.simulation.tanks
+    this.bullets = this.simulation.bullets
+    this.shapes = this.simulation.shapes
+    this.controlPoints = this.simulation.controlPoints
+    this.player = this.simulation.player
+    this.watchBots = this.simulation.watchBots
   }
 
   start() {
@@ -298,7 +185,7 @@ export class TankArena {
       }
 
       if (key === 'r' && this.gameOver) {
-        this.reset(false)
+        this.reset(this.selectedMode)
       }
 
       if (key === 'e') {
@@ -331,12 +218,28 @@ export class TankArena {
       this.input.touchMove = false
     })
 
-    this.hud.startButton.addEventListener('click', () => this.reset(false))
-    this.hud.botButton.addEventListener('click', () => this.reset(true))
+    this.hud.startButton.addEventListener('click', () => this.reset(this.selectedMode))
+    this.hud.botButton.addEventListener('click', () => {
+      this.selectedMode = 'botBrawl'
+      this.reset('botBrawl')
+    })
+    this.hud.modeGrid.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-mode]')
+      if (!button) return
+      this.selectedMode = button.dataset.mode as MatchMode
+      this.updateModeButtons(true)
+      this.updateHud(true)
+    })
     this.hud.upgradePanel.addEventListener('click', (event) => {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-stat]')
       if (button) {
         this.upgradeStat(button.dataset.stat as StatKey)
+      }
+    })
+    this.hud.talentPanel.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-talent]')
+      if (button) {
+        this.selectTalent(button.dataset.talent as Parameters<LocalTankSimulation['selectTalent']>[0])
       }
     })
   }
@@ -359,9 +262,9 @@ export class TankArena {
     this.input.pointerWorld = this.screenToWorld(this.input.pointer)
   }
 
-  reset(watchBots: boolean) {
-    this.watchBots = watchBots
-    this.prepareWorld(watchBots)
+  reset(mode: MatchMode | boolean) {
+    this.selectedMode = typeof mode === 'boolean' ? (mode ? 'botBrawl' : 'freeForAll') : mode
+    this.prepareWorld(this.selectedMode)
     this.started = true
     this.paused = false
     this.gameOver = false
@@ -370,84 +273,12 @@ export class TankArena {
     this.updateHud(true)
   }
 
-  prepareWorld(watchBots: boolean) {
-    this.nextId = 1
-    this.bullets = []
-    this.shapes = []
-    this.tanks = []
-
-    this.player = this.createTank('Moo', !watchBots, WORLD.width / 2, WORLD.height / 2, '#45a3ff')
-    if (watchBots) {
-      this.player.bot = true
-      this.player.name = 'Moo Bot'
-      this.player.ai = this.createBrain()
-    }
-    this.tanks.push(this.player)
-
-    for (let i = 0; i < 15; i += 1) {
-      const spawn = this.findSpawnPoint(this.player, 760, 220)
-      const bot = this.createTank(
-        BOT_NAMES[i % BOT_NAMES.length],
-        false,
-        spawn.x,
-        spawn.y,
-        pick(['#ff6b6b', '#7ed957', '#b57dff', '#ff9f43', '#36d1dc']),
-      )
-      bot.bot = true
-      bot.ai = this.createBrain()
-      for (let level = 1; level < randomInt(2, 8); level += 1) {
-        this.levelUp(bot, false)
-      }
-      this.tanks.push(bot)
-    }
-
-    for (let i = 0; i < TARGET_SHAPES; i += 1) {
-      this.spawnShape()
-    }
-
+  prepareWorld(mode: MatchMode) {
+    this.simulation.reset(mode)
+    this.syncFromSimulation()
     this.camera = { x: this.player.x, y: this.player.y }
     this.input.pointerWorld = { x: this.player.x + 200, y: this.player.y }
-  }
-
-  createTank(name: string, human: boolean, x: number, y: number, color: string): Tank {
-    const stats = createStats()
-    const tank: Tank = {
-      id: this.nextId,
-      name,
-      bot: !human,
-      color,
-      accent: lighten(color, 0.22),
-      x,
-      y,
-      vx: 0,
-      vy: 0,
-      radius: 28,
-      angle: 0,
-      aimAngle: 0,
-      health: 100,
-      maxHealth: 100,
-      lastHitAt: 0,
-      level: 1,
-      xp: 0,
-      score: 0,
-      upgradePoints: 0,
-      stats,
-      cooldown: 0,
-      alive: true,
-      respawnTimer: 0,
-    }
-    this.nextId += 1
-    this.applyStats(tank)
-    return tank
-  }
-
-  createBrain() {
-    return {
-      retargetIn: random(0.1, 0.8),
-      strafe: pick([-1, 1]),
-      wanderAngle: random(0, Math.PI * 2),
-      fire: false,
-    }
+    this.updateModeButtons(true)
   }
 
   tick(time: number) {
@@ -462,42 +293,19 @@ export class TankArena {
   }
 
   update(dt: number, time: number) {
-    while (this.shapes.length < TARGET_SHAPES) {
-      this.spawnShape()
+    const wasGameOver = this.gameOver
+    this.simulation.update(dt, time, this.readClientInput())
+    this.syncFromSimulation()
+    if (this.player.score > this.bestScore) {
+      this.bestScore = Math.max(this.bestScore, Math.floor(this.player.score))
+      localStorage.setItem('moo-tanks-best', String(this.bestScore))
     }
-
-    for (const shape of this.shapes) {
-      shape.angle += shape.spin * dt
-    }
-
-    for (const tank of this.tanks) {
-      if (!tank.alive) {
-        this.updateRespawn(tank, dt)
-        continue
-      }
-
-      this.applyStats(tank)
-      tank.cooldown = Math.max(0, tank.cooldown - dt)
-      this.regenerate(tank, dt, time)
-
-      if (tank.bot) {
-        this.updateBot(tank, dt)
-      } else {
-        this.updatePlayer(tank, dt)
-      }
-
-      this.moveTank(tank, dt)
-      const shouldFire = tank.bot ? Boolean(tank.ai?.fire) : this.input.pointerDown || this.input.autoFire
-      if (shouldFire) {
-        this.tryShoot(tank)
-      }
-    }
-
-    this.updateBullets(dt, time)
-    this.collisionTimer += dt
-    if (this.collisionTimer >= COLLISION_INTERVAL) {
-      this.resolveBodyCollisions(this.collisionTimer, time)
-      this.collisionTimer = 0
+    if (this.simulation.gameOver && !wasGameOver && !this.watchBots) {
+      this.gameOver = true
+      this.paused = true
+      this.bestScore = Math.max(this.bestScore, Math.floor(this.player.score))
+      localStorage.setItem('moo-tanks-best', String(this.bestScore))
+      this.showMenu('Tank Destroyed')
     }
     this.updateCamera(dt)
     this.hudTimer += dt
@@ -507,7 +315,7 @@ export class TankArena {
     }
   }
 
-  updatePlayer(tank: Tank, dt: number) {
+  readClientInput(): ClientInput {
     const move = { x: 0, y: 0 }
     if (this.input.keys.has('w') || this.input.keys.has('arrowup')) move.y -= 1
     if (this.input.keys.has('s') || this.input.keys.has('arrowdown')) move.y += 1
@@ -516,428 +324,33 @@ export class TankArena {
 
     if (this.input.touchMove && this.input.pointerDown) {
       const toward = normalize({
-        x: this.input.pointerWorld.x - tank.x,
-        y: this.input.pointerWorld.y - tank.y,
+        x: this.input.pointerWorld.x - this.player.x,
+        y: this.input.pointerWorld.y - this.player.y,
       })
       move.x += toward.x
       move.y += toward.y
     }
 
-    const direction = normalize(move)
-    const speed = moveSpeed(tank)
-    tank.vx += direction.x * speed * 9 * dt
-    tank.vy += direction.y * speed * 9 * dt
-    tank.aimAngle = Math.atan2(this.input.pointerWorld.y - tank.y, this.input.pointerWorld.x - tank.x)
-    tank.angle = lerpAngle(tank.angle, tank.aimAngle, 0.24)
-  }
-
-  updateBot(tank: Tank, dt: number) {
-    const brain = tank.ai
-    if (!brain) return
-
-    brain.retargetIn -= dt
-    if (!brain.target || brain.retargetIn <= 0 || !this.targetExists(brain.target)) {
-      brain.target = this.findTarget(tank)
-      brain.retargetIn = random(0.35, 0.9)
-      if (Math.random() < 0.22) {
-        brain.strafe *= -1
-      }
-    }
-
-    const target = brain.target ? this.getTargetPoint(brain.target) : undefined
-    if (!target) {
-      brain.fire = false
-      brain.wanderAngle += random(-0.4, 0.4) * dt
-      const wander = { x: Math.cos(brain.wanderAngle), y: Math.sin(brain.wanderAngle) }
-      this.accelerate(tank, wander, 0.68, dt)
-      tank.aimAngle = brain.wanderAngle
-      tank.angle = lerpAngle(tank.angle, tank.aimAngle, 0.12)
-      return
-    }
-
-    const toTarget = { x: target.x - tank.x, y: target.y - tank.y }
-    const distanceToTarget = length(toTarget)
-    const forward = normalize(toTarget)
-    const side = { x: -forward.y * brain.strafe, y: forward.x * brain.strafe }
-    const ideal = target.type === 'shape' ? 360 : 520
-    const panic = tank.health / tank.maxHealth < 0.33 && target.type === 'tank'
-
-    let movement = { x: side.x * 0.44, y: side.y * 0.44 }
-    if (distanceToTarget > ideal + 80) {
-      movement.x += forward.x
-      movement.y += forward.y
-    } else if (distanceToTarget < ideal - 120 || panic) {
-      movement.x -= forward.x * 1.15
-      movement.y -= forward.y * 1.15
-    }
-
-    if (tank.x < 240) movement.x += 1
-    if (tank.x > WORLD.width - 240) movement.x -= 1
-    if (tank.y < 240) movement.y += 1
-    if (tank.y > WORLD.height - 240) movement.y -= 1
-
-    this.accelerate(tank, normalize(movement), 0.82, dt)
-    tank.aimAngle = Math.atan2(toTarget.y, toTarget.x)
-    tank.angle = lerpAngle(tank.angle, tank.aimAngle, 0.14)
-    brain.fire = distanceToTarget < 900 && Math.abs(angleDelta(tank.angle, tank.aimAngle)) < 0.42
-
-    while (tank.upgradePoints > 0) {
-      const priorities: StatKey[] =
-        tank.level < 8
-          ? ['bulletDamage', 'reload', 'moveSpeed', 'bulletSpeed']
-          : ['bulletDamage', 'reload', 'maxHealth', 'regen', 'moveSpeed', 'bulletSpeed', 'bodyDamage']
-      this.upgradeStatFor(tank, pick(priorities))
-    }
-  }
-
-  accelerate(tank: Tank, direction: Point, multiplier: number, dt: number) {
-    const speed = moveSpeed(tank)
-    tank.vx += direction.x * speed * 7.5 * multiplier * dt
-    tank.vy += direction.y * speed * 7.5 * multiplier * dt
-  }
-
-  moveTank(tank: Tank, dt: number) {
-    tank.vx *= Math.pow(0.0018, dt)
-    tank.vy *= Math.pow(0.0018, dt)
-    const maxSpeed = moveSpeed(tank)
-    const velocity = Math.hypot(tank.vx, tank.vy)
-    if (velocity > maxSpeed) {
-      tank.vx = (tank.vx / velocity) * maxSpeed
-      tank.vy = (tank.vy / velocity) * maxSpeed
-    }
-
-    tank.x = clamp(tank.x + tank.vx * dt, tank.radius, WORLD.width - tank.radius)
-    tank.y = clamp(tank.y + tank.vy * dt, tank.radius, WORLD.height - tank.radius)
-  }
-
-  tryShoot(tank: Tank) {
-    if (!tank.alive || tank.cooldown > 0) return
-    const speed = bulletSpeed(tank)
-    const barrelLength = tank.radius + 28
-    const recoil = tank.radius * 0.2
-    const muzzle = {
-      x: tank.x + Math.cos(tank.angle) * barrelLength,
-      y: tank.y + Math.sin(tank.angle) * barrelLength,
-    }
-    const spread = random(-0.025, 0.025)
-    const angle = tank.angle + spread
-    this.bullets.push({
-      id: this.nextId,
-      ownerId: tank.id,
-      x: muzzle.x,
-      y: muzzle.y,
-      vx: Math.cos(angle) * speed + tank.vx * 0.2,
-      vy: Math.sin(angle) * speed + tank.vy * 0.2,
-      radius: 7 + tank.stats.bulletDamage * 0.25,
-      damage: bulletDamage(tank),
-      life: 1.45 + tank.stats.bulletSpeed * 0.03,
-      color: tank.accent,
-    })
-    this.nextId += 1
-    tank.cooldown = reloadTime(tank)
-    tank.vx -= Math.cos(tank.angle) * recoil * 5
-    tank.vy -= Math.sin(tank.angle) * recoil * 5
-  }
-
-  updateBullets(dt: number, time: number) {
-    for (let i = this.bullets.length - 1; i >= 0; i -= 1) {
-      const bullet = this.bullets[i]
-      bullet.x += bullet.vx * dt
-      bullet.y += bullet.vy * dt
-      bullet.life -= dt
-
-      let removed =
-        bullet.life <= 0 ||
-        bullet.x < -80 ||
-        bullet.y < -80 ||
-        bullet.x > WORLD.width + 80 ||
-        bullet.y > WORLD.height + 80
-      if (!removed) {
-        removed = this.hitShapes(bullet, time)
-      }
-      if (!removed) {
-        removed = this.hitTanks(bullet, time)
-      }
-      if (removed) {
-        this.bullets.splice(i, 1)
-      }
-    }
-  }
-
-  hitShapes(bullet: Bullet, time: number) {
-    for (let i = this.shapes.length - 1; i >= 0; i -= 1) {
-      const shape = this.shapes[i]
-      const hitRange = bullet.radius + shape.radius
-      if (distanceSq(bullet, shape) > hitRange * hitRange) continue
-
-      shape.health -= bullet.damage
-      const owner = this.tanks.find((tank) => tank.id === bullet.ownerId)
-      if (owner) {
-        owner.score += Math.ceil(bullet.damage * 0.18)
-      }
-      if (shape.health <= 0) {
-        this.shapes.splice(i, 1)
-        if (owner) {
-          this.award(owner, shape.xp, shape.score)
-        }
-      }
-      this.nudgeOwner(bullet, shape, time)
-      return true
-    }
-    return false
-  }
-
-  hitTanks(bullet: Bullet, time: number) {
-    for (const tank of this.tanks) {
-      if (!tank.alive || tank.id === bullet.ownerId) continue
-      const hitRange = bullet.radius + tank.radius
-      if (distanceSq(bullet, tank) > hitRange * hitRange) continue
-
-      tank.health -= bullet.damage
-      tank.lastHitAt = time
-      tank.vx += bullet.vx * 0.022
-      tank.vy += bullet.vy * 0.022
-      const owner = this.tanks.find((candidate) => candidate.id === bullet.ownerId)
-      if (tank.health <= 0) {
-        this.killTank(tank, owner)
-      }
-      return true
-    }
-    return false
-  }
-
-  nudgeOwner(bullet: Bullet, shape: ArenaShape, time: number) {
-    const owner = this.tanks.find((tank) => tank.id === bullet.ownerId)
-    if (!owner) return
-    const away = normalize({ x: shape.x - owner.x, y: shape.y - owner.y })
-    shape.x = clamp(shape.x + away.x * 3, shape.radius, WORLD.width - shape.radius)
-    shape.y = clamp(shape.y + away.y * 3, shape.radius, WORLD.height - shape.radius)
-    owner.lastHitAt = Math.max(owner.lastHitAt, time - 1500)
-  }
-
-  resolveBodyCollisions(dt: number, time: number) {
-    for (const tank of this.tanks) {
-      if (!tank.alive) continue
-
-      for (const shape of this.shapes) {
-        const range = tank.radius + shape.radius
-        const distSq = distanceSq(tank, shape)
-        if (distSq > range * range) continue
-        const gap = range - Math.sqrt(distSq)
-        if (gap <= 0) continue
-        const away = normalize({ x: tank.x - shape.x, y: tank.y - shape.y })
-        tank.x = clamp(tank.x + away.x * gap * 0.56, tank.radius, WORLD.width - tank.radius)
-        tank.y = clamp(tank.y + away.y * gap * 0.56, tank.radius, WORLD.height - tank.radius)
-        shape.x = clamp(shape.x - away.x * gap * 0.24, shape.radius, WORLD.width - shape.radius)
-        shape.y = clamp(shape.y - away.y * gap * 0.24, shape.radius, WORLD.height - shape.radius)
-        const damage = bodyDamage(tank) * dt
-        shape.health -= damage
-        tank.health -= Math.max(1, shape.radius * 0.035) * dt
-        tank.lastHitAt = time
-        if (shape.health <= 0) {
-          this.shapes.splice(this.shapes.indexOf(shape), 1)
-          this.award(tank, shape.xp, shape.score)
-        }
-        if (tank.health <= 0) {
-          this.killTank(tank, undefined)
-          break
-        }
-      }
-    }
-
-    for (let a = 0; a < this.tanks.length; a += 1) {
-      const first = this.tanks[a]
-      if (!first.alive) continue
-      for (let b = a + 1; b < this.tanks.length; b += 1) {
-        const second = this.tanks[b]
-        if (!second.alive) continue
-        const range = first.radius + second.radius
-        const distSq = distanceSq(first, second)
-        if (distSq > range * range) continue
-        const gap = range - Math.sqrt(distSq)
-        if (gap <= 0) continue
-        const away = normalize({ x: first.x - second.x, y: first.y - second.y })
-        first.x += away.x * gap * 0.5
-        first.y += away.y * gap * 0.5
-        second.x -= away.x * gap * 0.5
-        second.y -= away.y * gap * 0.5
-        first.health -= bodyDamage(second) * dt
-        second.health -= bodyDamage(first) * dt
-        first.lastHitAt = time
-        second.lastHitAt = time
-        if (first.health <= 0) this.killTank(first, second)
-        if (second.health <= 0) this.killTank(second, first)
-      }
-    }
-  }
-
-  regenerate(tank: Tank, dt: number, time: number) {
-    if (time - tank.lastHitAt < 2600) return
-    tank.health = Math.min(tank.maxHealth, tank.health + regenRate(tank) * dt)
-  }
-
-  updateRespawn(tank: Tank, dt: number) {
-    if (!tank.bot) return
-    tank.respawnTimer -= dt
-    if (tank.respawnTimer > 0) return
-    const spawn = tank.id === this.player.id ? this.findSpawnPoint({ x: WORLD.width / 2, y: WORLD.height / 2 }, 0, 180) : this.findSpawnPoint(this.player, 680, 180)
-    tank.x = spawn.x
-    tank.y = spawn.y
-    tank.vx = 0
-    tank.vy = 0
-    tank.health = tank.maxHealth
-    tank.cooldown = random(0.1, 0.9)
-    tank.alive = true
-    tank.ai = this.createBrain()
-  }
-
-  killTank(victim: Tank, killer?: Tank) {
-    victim.alive = false
-    victim.respawnTimer = victim.bot ? 3.5 : 0
-
-    if (killer && killer.id !== victim.id) {
-      this.award(killer, 40 + victim.level * 10, 180 + victim.level * 35)
-    }
-
-    if (victim.id === this.player.id && !this.watchBots) {
-      this.gameOver = true
-      this.paused = true
-      this.bestScore = Math.max(this.bestScore, Math.floor(this.player.score))
-      localStorage.setItem('moo-tanks-best', String(this.bestScore))
-      this.showMenu('Tank Destroyed')
-    }
-  }
-
-  award(tank: Tank, xp: number, score: number) {
-    if (!tank.alive) return
-    tank.xp += xp
-    tank.score += score
-    while (tank.xp >= xpForNext(tank.level) && tank.level < 45) {
-      tank.xp -= xpForNext(tank.level)
-      this.levelUp(tank, true)
-    }
-    if (tank.id === this.player.id) {
-      this.bestScore = Math.max(this.bestScore, Math.floor(tank.score))
-      localStorage.setItem('moo-tanks-best', String(this.bestScore))
-    }
-  }
-
-  levelUp(tank: Tank, grantPoint: boolean) {
-    tank.level += 1
-    tank.maxHealth += 4
-    tank.health = Math.min(tank.maxHealth, tank.health + 18)
-    if (grantPoint && (tank.level <= 28 || tank.level % 3 === 0)) {
-      tank.upgradePoints += 1
+    return {
+      movement: move,
+      aimAngle: Math.atan2(this.input.pointerWorld.y - this.player.y, this.input.pointerWorld.x - this.player.x),
+      fire: this.input.pointerDown,
+      autoFire: this.input.autoFire,
     }
   }
 
   upgradeStat(key?: StatKey) {
     if (!key) return
-    this.upgradeStatFor(this.player, key)
+    this.simulation.upgradeStat(key)
+    this.syncFromSimulation()
     this.updateHud()
   }
 
-  upgradeStatFor(tank: Tank, key: StatKey) {
-    if (tank.upgradePoints <= 0 || tank.stats[key] >= 7) return false
-    tank.stats[key] += 1
-    tank.upgradePoints -= 1
-    this.applyStats(tank)
-    return true
-  }
-
-  applyStats(tank: Tank) {
-    const previousRatio = tank.maxHealth > 0 ? tank.health / tank.maxHealth : 1
-    tank.maxHealth = 100 + tank.stats.maxHealth * 22 + (tank.level - 1) * 4
-    tank.health = clamp(tank.health, 1, tank.maxHealth)
-    if (previousRatio > 0.98) {
-      tank.health = tank.maxHealth
-    }
-  }
-
-  findTarget(tank: Tank): TargetRef | undefined {
-    let best: TargetRef | undefined
-    let bestScore = Number.POSITIVE_INFINITY
-
-    for (const candidate of this.tanks) {
-      if (!candidate.alive || candidate.id === tank.id) continue
-      const d = distance(tank, candidate)
-      if (d > 1200) continue
-      const threatBonus = candidate.id === this.player.id ? 180 : 0
-      const lowHealthBonus = candidate.health / candidate.maxHealth < 0.4 ? 120 : 0
-      const score = d - threatBonus - lowHealthBonus
-      if (score < bestScore) {
-        bestScore = score
-        best = { type: 'tank', id: candidate.id }
-      }
-    }
-
-    for (const shape of this.shapes) {
-      const d = distance(tank, shape)
-      const valueBias = shape.kind === 'pentagon' ? 180 : shape.kind === 'triangle' ? 80 : 0
-      const score = d - valueBias
-      if (score < bestScore) {
-        bestScore = score
-        best = { type: 'shape', id: shape.id }
-      }
-    }
-
-    return best
-  }
-
-  targetExists(target: TargetRef) {
-    if (target.type === 'shape') {
-      return this.shapes.some((shape) => shape.id === target.id)
-    }
-    return this.tanks.some((tank) => tank.id === target.id && tank.alive)
-  }
-
-  getTargetPoint(target: TargetRef): (Point & { type: TargetRef['type'] }) | undefined {
-    if (target.type === 'shape') {
-      const shape = this.shapes.find((candidate) => candidate.id === target.id)
-      return shape ? { x: shape.x, y: shape.y, type: 'shape' } : undefined
-    }
-    const tank = this.tanks.find((candidate) => candidate.id === target.id && candidate.alive)
-    return tank ? { x: tank.x, y: tank.y, type: 'tank' } : undefined
-  }
-
-  spawnShape() {
-    const roll = Math.random()
-    const kind: ShapeKind = roll > 0.92 ? 'pentagon' : roll > 0.58 ? 'triangle' : 'square'
-    const config = SHAPE_CONFIG[kind]
-    const spawn = this.findSpawnPoint(this.player, 140, 90)
-    this.shapes.push({
-      id: this.nextId,
-      kind,
-      x: spawn.x,
-      y: spawn.y,
-      radius: config.radius * random(0.9, 1.12),
-      sides: config.sides,
-      angle: random(0, Math.PI * 2),
-      spin: random(-0.9, 0.9),
-      health: config.health,
-      maxHealth: config.health,
-      xp: config.xp,
-      score: config.score,
-      color: config.color,
-      stroke: config.stroke,
-    })
-    this.nextId += 1
-  }
-
-  findSpawnPoint(avoid: Point, minDistance: number, margin: number): Point {
-    for (let attempt = 0; attempt < 60; attempt += 1) {
-      const point = {
-        x: random(margin, WORLD.width - margin),
-        y: random(margin, WORLD.height - margin),
-      }
-      if (distance(point, avoid) >= minDistance) {
-        return point
-      }
-    }
-    return {
-      x: clamp(avoid.x + minDistance, margin, WORLD.width - margin),
-      y: clamp(avoid.y + minDistance * 0.5, margin, WORLD.height - margin),
-    }
+  selectTalent(talentId?: Parameters<LocalTankSimulation['selectTalent']>[0]) {
+    if (!talentId) return
+    this.simulation.selectTalent(talentId)
+    this.syncFromSimulation()
+    this.updateHud()
   }
 
   updateCamera(dt: number) {
@@ -978,6 +391,11 @@ export class TankArena {
     this.ctx.save()
     this.ctx.translate(this.viewWidth / 2 - this.camera.x, this.viewHeight / 2 - this.camera.y)
     this.drawWorld()
+    for (const point of this.controlPoints) {
+      if (this.isVisible(point, point.radius + 12)) {
+        this.drawControlPoint(point)
+      }
+    }
     for (const shape of this.shapes) {
       if (this.isVisible(shape, shape.radius + 34)) {
         this.drawShape(shape)
@@ -1056,6 +474,33 @@ export class TankArena {
       this.drawBar(shape.x, shape.y - shape.radius - 18, shape.radius * 1.5, 6, shape.health / shape.maxHealth, '#f25555')
     }
   }
+
+  drawControlPoint(point: ControlPointState) {
+    const ownerColor =
+      point.owner === 'blue' ? 'rgba(69, 163, 255, 0.26)' : point.owner === 'red' ? 'rgba(255, 107, 107, 0.26)' : 'rgba(39, 49, 61, 0.1)'
+    const progressColor = point.progress >= 0 ? '#45a3ff' : '#ff6b6b'
+    this.ctx.beginPath()
+    this.ctx.arc(point.x, point.y, point.radius, 0, Math.PI * 2)
+    this.ctx.fillStyle = ownerColor
+    this.ctx.strokeStyle = 'rgba(39, 49, 61, 0.32)'
+    this.ctx.lineWidth = 4
+    this.ctx.fill()
+    this.ctx.stroke()
+
+    this.ctx.beginPath()
+    this.ctx.arc(point.x, point.y, point.radius - 10, -Math.PI / 2, -Math.PI / 2 + Math.abs(point.progress) * Math.PI * 2)
+    this.ctx.strokeStyle = progressColor
+    this.ctx.lineWidth = 7
+    this.ctx.stroke()
+
+    this.ctx.font = '900 24px Inter, system-ui, sans-serif'
+    this.ctx.textAlign = 'center'
+    this.ctx.textBaseline = 'middle'
+    this.ctx.fillStyle = '#263243'
+    this.ctx.fillText(point.label, point.x, point.y)
+    this.ctx.textBaseline = 'alphabetic'
+  }
+
 
   drawBullet(bullet: Bullet) {
     this.ctx.beginPath()
@@ -1163,12 +608,13 @@ export class TankArena {
   updateHud(force = false) {
     const player = this.player
     const playerName = player.name
-    const playerLevel = `Level ${player.level}`
+    const playerLevel = player.classBranch ? `Level ${player.level} - ${player.classBranch}` : `Level ${player.level}`
     const healthWidth = `${Math.round(clamp((player.health / player.maxHealth) * 100, 0, 100))}%`
     const xpWidth = `${Math.round(clamp((player.xp / xpForNext(player.level)) * 100, 0, 100))}%`
     const scoreValue = Math.floor(player.score).toLocaleString()
     const bestValue = Math.floor(this.bestScore).toLocaleString()
-    const menuStats = `${this.tanks.filter((tank) => tank.alive && tank.bot).length} bots active`
+    const mode = modeDefinition(this.selectedMode)
+    const menuStats = `${mode.label} - ${this.tanks.filter((tank) => tank.alive && tank.bot).length} bots active`
 
     this.setText(this.hud.playerName, 'playerName', playerName, force)
     this.setText(this.hud.playerLevel, 'playerLevel', playerLevel, force)
@@ -1177,6 +623,7 @@ export class TankArena {
     this.setText(this.hud.scoreValue, 'scoreValue', scoreValue, force)
     this.setText(this.hud.bestValue, 'bestValue', bestValue, force)
     this.setText(this.hud.menuStats, 'menuStats', menuStats, force)
+    this.updateModeButtons(force)
 
     const leaders = [...this.tanks].sort((a, b) => b.score - a.score).slice(0, 7)
     const leaderboard = leaders
@@ -1207,6 +654,45 @@ export class TankArena {
       this.hud.upgradePanel.dataset.points = upgradePoints
       this.hudSnapshot.upgradePoints = upgradePoints
     }
+
+    const talents = TALENTS.map((talent) => {
+      const selected = player.talents.includes(talent.id)
+      const locked = player.level < talent.minLevel
+      const disabled = selected || locked || player.talentPoints <= 0 || !player.alive || this.watchBots
+      const state = selected ? 'Selected' : locked ? `Lvl ${talent.minLevel}` : 'Ready'
+      return `
+        <button type="button" data-talent="${talent.id}" ${disabled ? 'disabled' : ''} class="${selected ? 'is-selected' : ''}">
+          <span class="talent-name">${talent.shortLabel}</span>
+          <span class="talent-state">${state}</span>
+        </button>
+      `
+    }).join('')
+    if (force || this.hudSnapshot.talents !== talents) {
+      this.hud.talentPanel.innerHTML = talents
+      this.hudSnapshot.talents = talents
+    }
+
+    const talentPoints = `${this.watchBots ? 0 : player.talentPoints}`
+    if (force || this.hudSnapshot.talentPoints !== talentPoints) {
+      this.hud.talentPanel.dataset.points = talentPoints
+      this.hudSnapshot.talentPoints = talentPoints
+    }
+  }
+
+  updateModeButtons(force = false) {
+    const modeButtons = MODE_DEFINITIONS.filter((mode) => mode.id !== 'botBrawl')
+      .map(
+        (mode) => `
+          <button type="button" data-mode="${mode.id}" class="${mode.id === this.selectedMode ? 'is-selected' : ''}">
+            ${mode.shortLabel}
+          </button>
+        `,
+      )
+      .join('')
+    if (force || this.hudSnapshot.modeButtons !== modeButtons) {
+      this.hud.modeGrid.innerHTML = modeButtons
+      this.hudSnapshot.modeButtons = modeButtons
+    }
   }
 
   setText(element: HTMLElement, key: keyof HudSnapshot, value: string, force: boolean) {
@@ -1229,16 +715,7 @@ export class TankArena {
   }
 
   getDebugState(): DebugState {
-    return {
-      playerX: this.player.x,
-      playerY: this.player.y,
-      playerVelocity: Math.hypot(this.player.vx, this.player.vy),
-      bullets: this.bullets.length,
-      shapes: this.shapes.length,
-      tanks: this.tanks.filter((tank) => tank.alive).length,
-      score: this.player.score,
-      level: this.player.level,
-    }
+    return this.simulation.getDebugState()
   }
 
   benchmark(frames = 300) {
@@ -1266,56 +743,8 @@ export class TankArena {
   }
 }
 
-function createStats(): StatBlock {
-  return {
-    maxHealth: 0,
-    regen: 0,
-    bodyDamage: 0,
-    bulletSpeed: 0,
-    bulletDamage: 0,
-    reload: 0,
-    moveSpeed: 0,
-  }
-}
-
-function moveSpeed(tank: Tank) {
-  return 238 + tank.stats.moveSpeed * 19 - tank.level * 0.4
-}
-
-function bulletSpeed(tank: Tank) {
-  return 650 + tank.stats.bulletSpeed * 62
-}
-
-function bulletDamage(tank: Tank) {
-  return 16 + tank.stats.bulletDamage * 5.5 + tank.level * 0.26
-}
-
-function reloadTime(tank: Tank) {
-  return Math.max(0.13, 0.46 - tank.stats.reload * 0.044)
-}
-
-function bodyDamage(tank: Tank) {
-  return 14 + tank.stats.bodyDamage * 5
-}
-
-function regenRate(tank: Tank) {
-  return 5 + tank.stats.regen * 2.8
-}
-
 function xpForNext(level: number) {
   return Math.floor(44 + level * 18 + Math.pow(level, 1.55) * 8)
-}
-
-function random(min: number, max: number) {
-  return min + Math.random() * (max - min)
-}
-
-function randomInt(min: number, max: number) {
-  return Math.floor(random(min, max + 1))
-}
-
-function pick<T>(items: T[]) {
-  return items[Math.floor(Math.random() * items.length)]
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1334,34 +763,8 @@ function normalize(point: Point): Point {
   return { x: point.x / magnitude, y: point.y / magnitude }
 }
 
-function distance(a: Point, b: Point) {
-  return Math.hypot(a.x - b.x, a.y - b.y)
-}
-
-function distanceSq(a: Point, b: Point) {
-  const dx = a.x - b.x
-  const dy = a.y - b.y
-  return dx * dx + dy * dy
-}
-
 function lerp(from: number, to: number, t: number) {
   return from + (to - from) * t
-}
-
-function lerpAngle(from: number, to: number, t: number) {
-  return from + angleDelta(from, to) * t
-}
-
-function angleDelta(from: number, to: number) {
-  return Math.atan2(Math.sin(to - from), Math.cos(to - from))
-}
-
-function lighten(hex: string, amount: number) {
-  const value = Number.parseInt(hex.slice(1), 16)
-  const r = clamp(((value >> 16) & 255) + 255 * amount, 0, 255)
-  const g = clamp(((value >> 8) & 255) + 255 * amount, 0, 255)
-  const b = clamp((value & 255) + 255 * amount, 0, 255)
-  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
 }
 
 function normalizeKey(event: KeyboardEvent) {

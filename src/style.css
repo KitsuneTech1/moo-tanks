@@ -49,6 +49,7 @@ button {
 
 .hud,
 .upgrade-panel,
+.talent-panel,
 .menu-panel {
   border: 1px solid rgba(69, 82, 99, 0.18);
   background: rgba(255, 255, 255, 0.9);
@@ -232,6 +233,76 @@ button {
   background: #45a3ff;
 }
 
+.talent-panel {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(100px, 1fr));
+  gap: 7px;
+  width: min(320px, calc(100vw - 32px));
+  padding: 36px 12px 12px;
+  border-radius: 8px;
+}
+
+.talent-panel::before {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  color: rgba(27, 39, 55, 0.7);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  content: attr(data-points) " talent points";
+}
+
+.talent-panel button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 9px;
+  border: 1px solid rgba(69, 82, 99, 0.16);
+  border-radius: 7px;
+  color: #182232;
+  background: rgba(246, 248, 251, 0.88);
+  cursor: pointer;
+}
+
+.talent-panel button:hover:not(:disabled) {
+  border-color: rgba(255, 159, 28, 0.75);
+  background: #ffffff;
+}
+
+.talent-panel button:disabled {
+  cursor: default;
+  opacity: 0.68;
+}
+
+.talent-panel button.is-selected {
+  border-color: rgba(50, 191, 101, 0.64);
+  background: rgba(221, 248, 231, 0.92);
+  opacity: 1;
+}
+
+.talent-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-state {
+  color: rgba(27, 39, 55, 0.58);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .menu {
   position: fixed;
   inset: 0;
@@ -279,6 +350,36 @@ button {
   font-weight: 700;
 }
 
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin: 0 0 14px;
+}
+
+.mode-grid button {
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgba(69, 82, 99, 0.16);
+  border-radius: 7px;
+  color: #1b2737;
+  background: rgba(246, 248, 251, 0.88);
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.mode-grid button:hover {
+  border-color: rgba(69, 163, 255, 0.7);
+  background: #ffffff;
+}
+
+.mode-grid button.is-selected {
+  color: #ffffff;
+  border-color: #17202c;
+  background: #17202c;
+}
+
 .menu-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -308,6 +409,51 @@ button {
   background: #c7d8e8;
 }
 
+.kitsune-footer {
+  position: fixed;
+  right: 16px;
+  bottom: 15px;
+  left: 16px;
+  z-index: 9;
+  color: #ff3b6b;
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+  animation: kitsuneDisco 1.6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes kitsuneDisco {
+  0% {
+    color: #ff3b6b;
+  }
+
+  16% {
+    color: #ff9f1c;
+  }
+
+  32% {
+    color: #f5e642;
+  }
+
+  48% {
+    color: #22c55e;
+  }
+
+  64% {
+    color: #45a3ff;
+  }
+
+  80% {
+    color: #a855f7;
+  }
+
+  100% {
+    color: #ff3b6b;
+  }
+}
+
 @media (max-width: 760px) {
   .hud-primary {
     top: 10px;
@@ -328,6 +474,21 @@ button {
     padding: 32px 9px 9px;
   }
 
+  .talent-panel {
+    bottom: 178px;
+    left: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: calc(100vw - 20px);
+    max-height: 30vh;
+    padding: 32px 9px 9px;
+    overflow: auto;
+  }
+
+  .talent-panel button {
+    min-height: 36px;
+    padding: 7px 8px;
+  }
+
   .upgrade-panel button {
     min-height: 48px;
     padding: 8px;
@@ -343,5 +504,9 @@ button {
 
   .menu-actions {
     grid-template-columns: 1fr;
+  }
+
+  .mode-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
