@@ -13,6 +13,8 @@ dist-ssr
 *.local
 .tmp
 test-results
+target
+target/
 
 # Editor directories and files
 .vscode/*

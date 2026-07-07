@@ -28,17 +28,27 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </section>
 
     <section class="upgrade-panel" id="upgradePanel" aria-label="Upgrades"></section>
+    <section class="talent-panel" id="talentPanel" aria-label="Talents"></section>
 
     <section class="menu" id="menu" aria-label="Game menu">
       <div class="menu-panel">
         <p class="kicker">Moo Tanks</p>
         <h1 id="menuTitle">Arena Online</h1>
         <p id="menuStats" class="menu-stats">0 bots active</p>
+        <div class="mode-grid" id="modeGrid" aria-label="Mode select">
+          <button type="button" data-mode="freeForAll" class="is-selected">FFA</button>
+          <button type="button" data-mode="teamDeathmatch">TDM</button>
+          <button type="button" data-mode="domination">Domination</button>
+          <button type="button" data-mode="survival">Survival</button>
+          <button type="button" data-mode="maze">Maze</button>
+          <button type="button" data-mode="privateLobby">Private</button>
+        </div>
         <div class="menu-actions">
           <button id="startButton" type="button">Deploy</button>
           <button id="botButton" type="button" class="secondary">Bot Brawl</button>
         </div>
       </div>
+      <footer class="kitsune-footer">Made by Kitsune Technologies</footer>
     </section>
   </main>
 `
@@ -48,6 +58,7 @@ const game = new TankArena({
   menu: document.querySelector<HTMLElement>('#menu')!,
   menuTitle: document.querySelector<HTMLElement>('#menuTitle')!,
   menuStats: document.querySelector<HTMLElement>('#menuStats')!,
+  modeGrid: document.querySelector<HTMLElement>('#modeGrid')!,
   startButton: document.querySelector<HTMLButtonElement>('#startButton')!,
   botButton: document.querySelector<HTMLButtonElement>('#botButton')!,
   playerName: document.querySelector<HTMLElement>('#playerName')!,
@@ -58,6 +69,7 @@ const game = new TankArena({
   bestValue: document.querySelector<HTMLElement>('#bestValue')!,
   leaderboardList: document.querySelector<HTMLOListElement>('#leaderboardList')!,
   upgradePanel: document.querySelector<HTMLElement>('#upgradePanel')!,
+  talentPanel: document.querySelector<HTMLElement>('#talentPanel')!,
 })
 
 ;(globalThis as unknown as { __MOO_TANKS_GAME__?: TankArena }).__MOO_TANKS_GAME__ = game
