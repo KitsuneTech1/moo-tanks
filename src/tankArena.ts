@@ -10,6 +10,7 @@ import type {
   TankState as Tank,
 } from './simulation/protocol'
 import { MODE_DEFINITIONS, modeDefinition } from './simulation/modes'
+import { STAT_KEYS, STAT_LABELS } from './simulation/rules'
 import { TALENTS } from './simulation/talents'
 
 type HudElements = {
@@ -77,26 +78,6 @@ const WORLD = {
 
 const RENDER_SCALE = 1
 const HUD_INTERVAL = 0.1
-
-const STAT_KEYS: StatKey[] = [
-  'maxHealth',
-  'regen',
-  'bodyDamage',
-  'bulletSpeed',
-  'bulletDamage',
-  'reload',
-  'moveSpeed',
-]
-
-const STAT_LABELS: Record<StatKey, string> = {
-  maxHealth: 'Max Health',
-  regen: 'Regen',
-  bodyDamage: 'Body Damage',
-  bulletSpeed: 'Bullet Speed',
-  bulletDamage: 'Bullet Damage',
-  reload: 'Reload',
-  moveSpeed: 'Move Speed',
-}
 
 export class TankArena {
   canvas: HTMLCanvasElement
