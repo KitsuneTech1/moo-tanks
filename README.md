@@ -1,62 +1,76 @@
 # Moo Tanks
 
-A browser tank arena prototype inspired by Diep.io, built with Vite, TypeScript, and Canvas 2D. It uses original visuals and local game logic rather than copied Diep.io assets.
+A Diep-style browser tank arena prototype with working bots, upgrades, and shape farming.
 
-## Current Build
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
+## [Play it](https://kitsunetech1.github.io/moo-tanks/)
+
+Runs entirely in the browser, no account or install needed. Click Bot Brawl on the menu for an instant match against bots.
+
+![Moo Tanks gameplay](docs-assets/screenshot.png)
+
+## Features
 
 - Player tank with mouse aim, movement, shooting, health, XP, score, and upgrade points.
-- Shape farming with squares, triangles, and pentagons.
-- Working bots that roam, target shapes and tanks, shoot, strafe, level up, upgrade stats, and respawn.
-- Leaderboard, minimap, health/XP bars, high score persistence, pause/restart, and bot-only brawl mode.
-- Default potato-mode rendering with capped canvas pixel ratio and throttled HUD updates.
-- DOM-free local simulation module with shared protocol/snapshot types for the future multiplayer backend and native app.
-- Local mode foundation for Free For All, Team Deathmatch, Domination, Survival, Maze Arena, Bot Brawl, and Private Lobby.
-- Class/talent foundation with Twin, Sniper, Machine Gun, Flank Guard, Drone, Trapper, and Destroyer branches.
-- Dedicated Moo Tanks SpacetimeDB backend scaffold under `backend/spacetimedb`.
-- Menu footer branding: `Made by Kitsune Technologies` with cycling disco colors.
+- Shape farming: squares, triangles, and pentagons to grind for XP.
+- Bots that roam, target shapes and other tanks, shoot, strafe, level up, and respawn.
+- Leaderboard, minimap, health/XP bars, high score persistence, and pause/restart.
+- Local modes: Free For All, Team Deathmatch, Domination, Survival, Maze Arena, Bot Brawl, and Private Lobby.
+- Talent branches at level milestones: Twin, Sniper, Machine Gun, Flank Guard, Drone, Trapper, and Destroyer.
+- A DOM-free simulation core (`src/simulation`) shared between the browser client and headless tests.
+- A separate SpacetimeDB backend scaffold (`backend/spacetimedb`) for a future multiplayer prototype. Not required to play; the current build is fully client-side.
 
-## Controls
-
-- Move: `WASD` or arrow keys
-- Aim: mouse
-- Fire: hold left mouse
-- Toggle auto-fire: `E`
-- Upgrade: click an upgrade or press number keys
-- Talent: click an unlocked talent button
-- Pause: `P`
-- Restart after death: `R`
-
-## Run Locally
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Build:
+Build the static site:
 
 ```bash
 npm run build
 ```
 
-Smoke test:
+Other checks:
 
 ```bash
-npm run smoke
+npm run typecheck   # tsc
+npm run smoke       # browser smoke test (needs a running dev/preview server)
+npm run sim:smoke   # headless simulation smoke test
+npm run backend:check  # cargo check on the backend scaffold
 ```
 
-Headless simulation smoke:
+## Controls
 
-```bash
-npm run sim:smoke
-```
+| Action | Input |
+| --- | --- |
+| Move | `WASD` or arrow keys |
+| Aim | Mouse |
+| Fire | Hold left mouse button |
+| Toggle auto-fire | `E` |
+| Upgrade a stat | Click an upgrade panel button, or number keys |
+| Pick a talent | Click an unlocked talent button |
+| Pause | `P` |
+| Restart after death | `R` |
 
-Backend check:
+## Roadmap
 
-```bash
-npm run backend:check
-```
+This is a prototype, not a finished game. Current state and honest next steps:
 
-## Direction
+- Done: playable single-player arena with bots, upgrades, talents, and local game modes.
+- In progress: a dedicated SpacetimeDB backend for real multiplayer (schema and reducers exist, no live server yet).
+- Planned: client prediction and snapshot interpolation once the backend is live, then account login, cosmetics, and a native Flutter client.
 
-The first version remains the fast playable web client. The expansion path is dedicated Moo Tanks SpacetimeDB multiplayer, Firebase Google login, persistent accounts/stats/cosmetics, deeper talents/loadouts, and a native Flutter client that matches the web visual style without being a WebView wrapper.
+See `notes/ROADMAP.md` and `notes/DEVLOG.md` for details.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
+
+---
+
+Built by [Kitsune Technologies](https://kitsunetechnologies.org). See more of our work at [kitsunetechnologies.org/work](https://kitsunetechnologies.org/work). Issues and PRs welcome.
