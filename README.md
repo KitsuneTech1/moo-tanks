@@ -114,4 +114,4 @@ See `notes/ROADMAP.md` and `notes/DEVLOG.md` for details.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
