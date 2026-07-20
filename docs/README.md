@@ -2,26 +2,22 @@
 
 A Diep-style browser tank arena prototype with bots, upgrades, and shape farming.
 
-## Why
-
-This is an early-stage prototype for exploring tank-arena mechanics, local game modes, and a future multiplayer backend. It runs entirely in the browser today so anyone can try it without an account or install.
+This is an early-stage prototype, not a finished game. It runs entirely in the browser with no account or install needed. A SpacetimeDB backend scaffold exists for future multiplayer work but is not required to play.
 
 ## Features
 
-- Player tank with mouse aim, WASD movement, shooting, health, XP, score, and upgrade points
-- Shape farming: squares, triangles, and pentagons to grind for XP
-- Bots that roam, target shapes and other tanks, shoot, strafe, level up, and respawn
-- Leaderboard, minimap, health and XP bars, high score persistence, and pause/restart
-- Local modes: Free For All, Team Deathmatch, Domination, Survival, Maze Arena, Bot Brawl, and Private Lobby
-- Talent branches at level milestones: Twin, Sniper, Machine Gun, Flank Guard, Drone, Trapper, and Destroyer
-- A DOM-free simulation core (`src/simulation`) shared between the browser client and headless tests
-- A separate SpacetimeDB backend scaffold (`backend/spacetimedb`) for a future multiplayer prototype (not required to play)
+- Player tank with mouse aim, WASD movement, shooting, health, XP, score, and upgrade points.
+- Shape farming: squares, triangles, and pentagons to grind for XP.
+- Bots that roam, target shapes and other tanks, shoot, strafe, level up, and respawn.
+- Leaderboard, minimap, health and XP bars, high score persistence, and pause/restart.
+- Local modes: Free For All, Team Deathmatch, Domination, Survival, Maze Arena, Bot Brawl, and Private Lobby.
+- Talent branches at level milestones: Twin, Sniper, Machine Gun, Flank Guard, Drone, Trapper, and Destroyer.
+- A DOM-free simulation core (`src/simulation`) shared between the browser client and headless tests.
+- A separate SpacetimeDB backend scaffold (`backend/spacetimedb`) for a future multiplayer prototype.
 
 ## Quickstart
 
-Play the live build at [kitsunetech1.github.io/moo-tanks](https://kitsunetech1.github.io/moo-tanks/).
-
-To run locally:
+You need Node.js 20.19 or newer.
 
 ```bash
 git clone https://github.com/KitsuneTech1/moo-tanks.git
@@ -32,7 +28,7 @@ npm run dev
 
 Open `http://localhost:5173/` in your browser. Click **Bot Brawl** for an instant match against bots.
 
-Other commands:
+Other useful commands:
 
 ```bash
 npm run build          # build the static site
@@ -44,7 +40,7 @@ npm run backend:check  # cargo check on the backend scaffold
 
 ## Configuration
 
-The client-side game has no environment variables. The SpacetimeDB backend scaffold (`backend/spacetimedb`) reads its configuration from a `.env` file (not included). Refer to `backend/spacetimedb/src/lib.rs` for the expected keys.
+There are no environment variables for the client build. The game runs with sensible defaults. The SpacetimeDB backend scaffold (`backend/spacetimedb`) uses its own configuration; see `backend/README.md` for details.
 
 ## License
 
