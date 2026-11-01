@@ -66,9 +66,9 @@ The rest of this section is only for people who want to run the source code them
    ```bash
    npm run dev
    ```
-   You should see output that includes a line like `Local: http://localhost:5173/`.
+   You should see output that includes a line like `Local: http://localhost:5173/moo-tanks/`.
 
-6. **Open the game.** Go to `http://localhost:5173/` in your browser (Ctrl+click or Cmd+click the link in the terminal also works).
+6. **Open the game.** Go to `http://localhost:5173/moo-tanks/` in your browser (Ctrl+click or Cmd+click the link in the terminal also works).
 
 **It worked if:** you see the Moo Tanks menu, and clicking Bot Brawl drops you into an arena you can move around in with WASD.
 
