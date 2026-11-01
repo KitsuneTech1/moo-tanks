@@ -3,7 +3,7 @@ import { TankArena } from './tankArena'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="game-shell">
-    <canvas id="arena" aria-label="Moo Tanks arena" tabindex="0"></canvas>
+    <canvas id="arena" aria-label="Tank Yard arena" tabindex="0"></canvas>
 
     <section class="hud hud-primary" aria-label="Player status">
       <div class="hud-row hud-title">
@@ -32,7 +32,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
     <section class="menu" id="menu" aria-label="Game menu">
       <div class="menu-panel">
-        <p class="kicker">Moo Tanks</p>
+        <p class="kicker">Tank Yard</p>
         <h1 id="menuTitle">Arena Online</h1>
         <p id="menuStats" class="menu-stats">0 bots active</p>
         <div class="mode-grid" id="modeGrid" aria-label="Mode select">
