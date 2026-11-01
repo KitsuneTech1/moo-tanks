@@ -5,13 +5,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --configLoader native",
     "typecheck": "tsc",
     "sim:smoke": "node scripts/sim-smoke.mjs",
     "smoke": "node scripts/smoke.mjs",
     "backend:check": "cargo check --manifest-path backend/spacetimedb/Cargo.toml",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "tsc && vite build --configLoader native",
+    "preview": "vite preview --configLoader native"
   },
   "devDependencies": {
     "playwright": "^1.60.0",
