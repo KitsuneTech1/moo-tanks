@@ -9,7 +9,7 @@ A Diep-style browser tank arena prototype with working bots, upgrades, and shape
 
 ## Play online
 
-Runs entirely in the browser, no account or install needed. Play it right now: **[kitsunetech1.github.io/moo-tanks](https://kitsunetech1.github.io/moo-tanks/)**
+Runs entirely in the browser, no account or install needed. Play it right now: **[kitsunetechnologies.org/play/tank-yard](https://kitsunetechnologies.org/play/tank-yard/)**
 
 Click Bot Brawl on the menu for an instant match against bots.
 
