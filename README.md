@@ -1,17 +1,19 @@
 <p align="center"><a href="https://kitsunetechnologies.org/work"><img src="https://raw.githubusercontent.com/KitsuneTech1/.github/main/assets/kitsune-banner.svg" alt="Built by Kitsune Technologies" width="760"></a></p>
 
-# Moo Tanks
+# Tank Yard
 
 A Diep-style browser tank arena prototype with working bots, upgrades, and shape farming.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-## [Play it](https://kitsunetech1.github.io/moo-tanks/)
+## Play online
 
-Runs entirely in the browser, no account or install needed. Click Bot Brawl on the menu for an instant match against bots.
+Runs entirely in the browser, no account or install needed. Play it right now: **[kitsunetech1.github.io/moo-tanks](https://kitsunetech1.github.io/moo-tanks/)**
 
-![Moo Tanks gameplay](docs-assets/screenshot.png)
+Click Bot Brawl on the menu for an instant match against bots.
+
+![Tank Yard gameplay](docs-assets/screenshot.png)
 
 ## Features
 
@@ -24,20 +26,10 @@ Runs entirely in the browser, no account or install needed. Click Bot Brawl on t
 - A DOM-free simulation core (`src/simulation`) shared between the browser client and headless tests.
 - A separate SpacetimeDB backend scaffold (`backend/spacetimedb`) for a future multiplayer prototype. Not required to play; the current build is fully client-side.
 
-## Use it now
+## Quick Start
 
-Play it in your browser right now, nothing to install: **[kitsunetech1.github.io/moo-tanks](https://kitsunetech1.github.io/moo-tanks/)**
+To run the code locally (to modify the game or work on the backend), you need Node.js 20.19+ or 22.12+.
 
-The rest of this section is only for people who want to run the source code themselves, for example to change the game or work on the multiplayer backend.
-
-## Run it yourself
-
-### What you need
-
-- **Node.js 20.19 or newer** (or 22.12+). This gets you `node` and `npm`. Check what you have by opening a terminal and typing `node -v`. It should print something like `v20.19.0` or higher. If the command errors, or shows an older version, install the current LTS release from https://nodejs.org and try again.
-- A web browser. Chrome, Firefox, and Edge all work fine, you already have one.
-
-### Step by step
 
 1. **Open a terminal.**
    - Windows: press the Start key, type `PowerShell`, and open "Windows PowerShell".
@@ -70,7 +62,7 @@ The rest of this section is only for people who want to run the source code them
 
 6. **Open the game.** Go to `http://localhost:5173/moo-tanks/` in your browser (Ctrl+click or Cmd+click the link in the terminal also works).
 
-**It worked if:** you see the Moo Tanks menu, and clicking Bot Brawl drops you into an arena you can move around in with WASD.
+**It worked if:** you see the Tank Yard menu, and clicking Bot Brawl drops you into an arena you can move around in with WASD.
 
 **Troubleshooting:**
 
