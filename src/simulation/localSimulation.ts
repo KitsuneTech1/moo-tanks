@@ -677,6 +677,7 @@ export class LocalTankSimulation {
   }
 
   killTank(victim: TankState, killer?: TankState) {
+    if (!victim.alive) return
     victim.alive = false
     victim.respawnTimer = victim.bot ? 3.5 : 0
 
