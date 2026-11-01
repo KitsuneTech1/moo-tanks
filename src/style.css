@@ -510,3 +510,6 @@ button {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.skip-link { position: absolute; left: -9999px; top: 8px; z-index: 10000; background: #111; color: #fff; padding: 8px 12px; border-radius: 4px; }
+.skip-link:focus { left: 8px; }
