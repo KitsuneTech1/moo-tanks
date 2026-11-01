@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "vite --configLoader native",
     "typecheck": "tsc",
+    "test": "node scripts/unit-smoke.mjs",
     "sim:smoke": "node scripts/sim-smoke.mjs",
     "smoke": "node scripts/smoke.mjs",
     "backend:check": "cargo check --manifest-path backend/spacetimedb/Cargo.toml",
+    "backend:test": "node scripts/backend-validation-test.mjs",
     "build": "tsc && vite build --configLoader native",
     "preview": "vite preview --configLoader native"
   },

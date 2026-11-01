@@ -1,5 +1,8 @@
 use spacetimedb::{ConnectionId, Identity, ReducerContext, Table, Timestamp};
 
+mod validation;
+use validation::{claim_rewards_once, clamp_finite, dev_grants_enabled, finite, match_has_capacity};
+
 const REGION: &str = "local";
 
 #[spacetimedb::table(accessor = accounts, public)]
@@ -103,6 +106,7 @@ pub struct LivePlayer {
     score: u64,
     kills: u64,
     deaths: u64,
+    rewards_claimed: bool,
     upgrade_csv: String,
     talent_csv: String,
     cosmetic_skin_id: String,
@@ -269,9 +273,9 @@ pub fn submit_input(
     let input = InputState {
         identity: ctx.sender(),
         match_id: player.match_id,
-        move_x: clamp(move_x, -1.0, 1.0),
-        move_y: clamp(move_y, -1.0, 1.0),
-        aim_angle,
+        move_x: clamp_finite(move_x, -1.0, 1.0, "move x")?,
+        move_y: clamp_finite(move_y, -1.0, 1.0, "move y")?,
+        aim_angle: finite(aim_angle, "aim angle")?,
         fire,
         auto_fire,
         updated_at: ctx.timestamp,
@@ -338,7 +342,7 @@ pub fn equip_cosmetic(ctx: &ReducerContext, slot: String, cosmetic_id: String) -
 
 #[spacetimedb::reducer]
 pub fn claim_match_rewards(ctx: &ReducerContext, match_id: u64) -> Result<(), String> {
-    let player = ctx
+    let mut player = ctx
         .db
         .live_players()
         .identity()
@@ -348,6 +352,7 @@ pub fn claim_match_rewards(ctx: &ReducerContext, match_id: u64) -> Result<(), St
     if player.match_id != match_id {
         return Err("player is not in that match".to_string());
     }
+    claim_rewards_once(&mut player.rewards_claimed)?;
 
     let mut stats = ensure_stats(ctx)?;
     stats.kills += player.kills;
@@ -355,11 +360,16 @@ pub fn claim_match_rewards(ctx: &ReducerContext, match_id: u64) -> Result<(), St
     stats.score += player.score;
     stats.updated_at = ctx.timestamp;
     ctx.db.player_stats().identity().update(stats);
+    player.updated_at = ctx.timestamp;
+    ctx.db.live_players().identity().update(player);
     Ok(())
 }
 
 #[spacetimedb::reducer]
 pub fn grant_dev_cosmetic(ctx: &ReducerContext, item_type: String, item_id: String) -> Result<(), String> {
+    if !dev_grants_enabled() {
+        return Err("development cosmetic grants are disabled".to_string());
+    }
     let clean_type = clean_identifier(item_type, 32, "item type")?;
     let clean_item = clean_identifier(item_id, 64, "item id")?;
     ctx.db.inventory().insert(InventoryItem {
@@ -385,6 +395,22 @@ fn join_match_inner(ctx: &ReducerContext, match_id: u64) -> Result<(), String> {
         return Err("match has already ended".to_string());
     }
 
+    let already_in_match = ctx
+        .db
+        .live_players()
+        .identity()
+        .find(ctx.sender())
+        .is_some_and(|player| player.match_id == match_id);
+    let connected_players = ctx
+        .db
+        .live_players()
+        .iter()
+        .filter(|player| player.match_id == match_id && player.connected)
+        .count() as u32;
+    if !match_has_capacity(already_in_match, connected_players, max_players(&match_row.mode)) {
+        return Err("match is full".to_string());
+    }
+
     ctx.db.live_players().identity().delete(ctx.sender());
     let account = upsert_account(ctx, None, None)?;
     let loadout = ensure_loadout(ctx)?;
@@ -404,6 +430,7 @@ fn join_match_inner(ctx: &ReducerContext, match_id: u64) -> Result<(), String> {
         score: 0,
         kills: 0,
         deaths: 0,
+        rewards_claimed: false,
         upgrade_csv: String::new(),
         talent_csv: loadout.talent_preset,
         cosmetic_skin_id: loadout.skin_id,
@@ -636,8 +663,4 @@ fn clean_text(value: String, max_len: usize, label: &str) -> Result<String, Stri
     }
 
     Ok(cleaned)
-}
-
-fn clamp(value: f32, min: f32, max: f32) -> f32 {
-    value.min(max).max(min)
 }
