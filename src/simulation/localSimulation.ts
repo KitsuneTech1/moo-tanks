@@ -895,14 +895,19 @@ export class LocalTankSimulation {
     return {
       tick: this.tick,
       mode: this.mode,
-      world: WORLD,
+      world: { ...WORLD },
       match: {
         label: modeDefinition(this.mode).label,
         wave: this.wave,
         teamScores: { ...this.teamScores },
       },
       playerId: this.player.id,
-      tanks: this.tanks.map((tank) => ({ ...tank, talents: [...tank.talents], stats: { ...tank.stats } })),
+      tanks: this.tanks.map((tank) => ({
+        ...tank,
+        talents: [...tank.talents],
+        stats: { ...tank.stats },
+        ai: tank.ai ? { ...tank.ai, target: tank.ai.target ? { ...tank.ai.target } : undefined } : undefined,
+      })),
       bullets: this.bullets.map((bullet) => ({ ...bullet })),
       shapes: this.shapes.map((shape) => ({ ...shape })),
       controlPoints: this.controlPoints.map((point) => ({ ...point })),

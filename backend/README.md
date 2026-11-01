@@ -42,7 +42,7 @@ The module is intentionally separate from the Aethelgard `kitsune-backend` datab
 - `select_talent(talent_id)`
 - `equip_cosmetic(slot, cosmetic_id)`
 - `claim_match_rewards(match_id)`
-- `grant_dev_cosmetic(item_type, item_id)`
+- `grant_dev_cosmetic(item_type, item_id)` is disabled until a capability check exists.
 
 Firebase ID token verification should happen in the Node bridge before calling `auth_session`; reducers only accept already-verified UID/display-name data.
 

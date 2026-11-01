@@ -12,6 +12,7 @@ import type {
 import { MODE_DEFINITIONS, modeDefinition } from './simulation/modes'
 import { STAT_KEYS, STAT_LABELS } from './simulation/rules'
 import { TALENTS } from './simulation/talents'
+import { readBestScore, writeBestScore } from './clientStorage'
 
 type HudElements = {
   canvas: HTMLCanvasElement
@@ -109,7 +110,7 @@ export class TankArena {
   gameOver = false
   watchBots = false
   selectedMode: MatchMode = 'freeForAll'
-  bestScore = Number(localStorage.getItem('moo-tanks-best') ?? '0')
+  bestScore = readBestScore()
   hudTimer = 0
   collisionTimer = 0
   cachedDpr = RENDER_SCALE
@@ -279,13 +280,13 @@ export class TankArena {
     this.syncFromSimulation()
     if (this.player.score > this.bestScore) {
       this.bestScore = Math.max(this.bestScore, Math.floor(this.player.score))
-      localStorage.setItem('moo-tanks-best', String(this.bestScore))
+      writeBestScore(this.bestScore)
     }
     if (this.simulation.gameOver && !wasGameOver && !this.watchBots) {
       this.gameOver = true
       this.paused = true
       this.bestScore = Math.max(this.bestScore, Math.floor(this.player.score))
-      localStorage.setItem('moo-tanks-best', String(this.bestScore))
+      writeBestScore(this.bestScore)
       this.showMenu('Tank Destroyed')
     }
     this.updateCamera(dt)
@@ -609,7 +610,7 @@ export class TankArena {
 
     const leaders = [...this.tanks].sort((a, b) => b.score - a.score).slice(0, 7)
     const leaderboard = leaders
-      .map((tank) => `<li><span>${tank.name}</span><strong>${Math.floor(tank.score).toLocaleString()}</strong></li>`)
+      .map((tank) => `<li><span>${escapeHtml(tank.name)}</span><strong>${Math.floor(tank.score).toLocaleString()}</strong></li>`)
       .join('')
     if (force || this.hudSnapshot.leaderboard !== leaderboard) {
       this.hud.leaderboardList.innerHTML = leaderboard
@@ -727,6 +728,19 @@ export class TankArena {
 
 function xpForNext(level: number) {
   return Math.floor(44 + level * 18 + Math.pow(level, 1.55) * 8)
+}
+
+export function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }
+    return entities[character]
+  })
 }
 
 function clamp(value: number, min: number, max: number) {
