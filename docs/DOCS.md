@@ -50,7 +50,7 @@ The SpacetimeDB backend scaffold uses standard Rust/Cargo configuration. See `ba
 
 ### Client-side
 
-There is no persistent storage. High scores are kept in `localStorage` for the duration of a browser session. The simulation state is held in memory and reset on page reload.
+High scores are kept in `localStorage` and survive page reloads until the browser data is cleared. The simulation state is held in memory and reset on page reload.
 
 Key entities in the simulation core (`src/simulation/protocol.ts` and related files):
 
@@ -77,9 +77,9 @@ npm run preview
 
 ## Gotchas
 
-- **Bot Brawl is the quickest way to test.** The Deploy button starts a mode without bots unless you add them.
+- **Bot Brawl is the quickest way to watch the AI.** The Deploy button starts the selected mode, including the default Free For All match with 15 bots. Bot Brawl puts the camera player under AI control.
 - **The simulation core is DOM-free.** Tests in `scripts/sim-smoke.mjs` use `headlessHarness.ts` and do not need a browser.
 - **The smoke test needs a running server.** Run `npm run dev` or `npm run preview` in another terminal before running `npm run smoke`.
 - **The SpacetimeDB backend does nothing yet.** It compiles but is not wired to the client. `npm run backend:check` only validates the Rust code.
 - **Performance is not optimized.** Choppiness is expected with many entities or on lower-end machines. This is a prototype.
-- **No mobile support.** The game expects a keyboard and mouse.
+- **Touch input is supported.** Touch movement and firing work on the canvas; keyboard and mouse are the primary controls on desktop.

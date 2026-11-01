@@ -595,7 +595,8 @@ export class TankArena {
     const scoreValue = Math.floor(player.score).toLocaleString()
     const bestValue = Math.floor(this.bestScore).toLocaleString()
     const mode = modeDefinition(this.selectedMode)
-    const menuStats = `${mode.label} - ${this.tanks.filter((tank) => tank.alive && tank.bot).length} bots active`
+    const botCount = this.paused ? mode.botCount : this.tanks.filter((tank) => tank.alive && tank.bot).length
+    const menuStats = `${mode.label} - ${botCount} bots active`
 
     this.setText(this.hud.playerName, 'playerName', playerName, force)
     this.setText(this.hud.playerLevel, 'playerLevel', playerLevel, force)
