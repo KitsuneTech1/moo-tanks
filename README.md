@@ -4,6 +4,7 @@
 
 A Diep-style browser tank arena prototype with working bots, upgrades, and shape farming.
 
+[![Build Status](https://github.com/KitsuneTech1/moo-tanks/actions/workflows/ci.yml/badge.svg)](https://github.com/KitsuneTech1/moo-tanks/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
@@ -14,6 +15,19 @@ Runs entirely in the browser, no account or install needed. Play it right now: *
 Click Bot Brawl on the menu for an instant match against bots.
 
 ![Tank Yard gameplay](docs-assets/screenshot.png)
+
+
+## Architecture & Data Flow
+
+```mermaid
+flowchart TD
+    A[Browser Client: Canvas Renderer] --> B[Input Controller: WASD / Mouse Aim]
+    B --> C[Physics & Collision Engine: Tanks & Projectiles]
+    C --> D[Arena State: Powerups, Health, Obstacles]
+    D --> E[AI Bot Behavior Engine]
+    E --> C
+    C --> F[WebSocket Multiplayer Backend Relay]
+```
 
 ## Features
 
